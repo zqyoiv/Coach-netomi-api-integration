@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Netomi API Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00ff88;
+            font-size: 2rem;
+        }
+
+        .api-section {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .api-section h2 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-weight: bold;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            background-color: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #00ff88;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #00cc6a;
+        }
+
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .response.success {
+            background-color: #0a2f0a;
+            border: 1px solid #00ff88;
+        }
+
+        .response.error {
+            background-color: #2f0a0a;
+            border: 1px solid #ff4444;
+        }
+
+        .endpoint-info {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Netomi API Tester</h1>
+        
+        <!-- Generate Token API -->
+        <div class="api-section">
+            <h2>1. Generate Token</h2>
+            <div class="endpoint-info">GET /api/netomi/generate-token</div>
+            <p style="color: #ccc; margin-bottom: 15px;">Calls the external Netomi generate-token API (POST to auth-us.netomi.com) with headers from .env</p>
+            
+            <button id="generateTokenBtn" onclick="generateToken()">Generate Token</button>
+            <div id="generateTokenResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- Send Message API -->
+        <div class="api-section">
+            <h2>2. Send Message</h2>
+            <div class="endpoint-info">POST /api/netomi/send</div>
+            <p style="color: #ccc; margin-bottom: 15px;">Send a user message to Netomi</p>
+            
+            <div class="form-group">
+                <label for="messageText">Message Text *</label>
+                <textarea id="messageText" placeholder="Enter your message here..." required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="userId">User ID (optional)</label>
+                <input type="text" id="userId" placeholder="Leave empty for auto-generated UUID">
+            </div>
+            
+            <div class="form-group">
+                <label for="sessionId">Session ID (optional)</label>
+                <input type="text" id="sessionId" placeholder="Leave empty for auto-generated UUID">
+            </div>
+            
+            <div class="form-group">
+                <label for="channel">Channel (optional)</label>
+                <input type="text" id="channel" placeholder="Default: web" value="web">
+            </div>
+            
+            <div class="form-group">
+                <label for="metadata">Metadata (optional JSON)</label>
+                <textarea id="metadata" placeholder='{"key": "value"}'></textarea>
+            </div>
+            
+            <button id="sendMessageBtn" onclick="sendMessage()">Send Message</button>
+            <div id="sendMessageResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Generate Token API Call
+        async function generateToken() {
+            const btn = document.getElementById('generateTokenBtn');
+            const responseDiv = document.getElementById('generateTokenResponse');
+            
+            btn.disabled = true;
+            btn.innerHTML = 'Generating Token<span class="loading"></span>';
+            responseDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/netomi/generate-token');
+                const data = await response.json();
+                
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response ' + (data.ok ? 'success' : 'error');
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response error';
+                responseDiv.textContent = 'Network Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Generate Token';
+            }
+        }
+
+        // Send Message API Call
+        async function sendMessage() {
+            const btn = document.getElementById('sendMessageBtn');
+            const responseDiv = document.getElementById('sendMessageResponse');
+            
+            const text = document.getElementById('messageText').value.trim();
+            if (!text) {
+                alert('Message text is required!');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = 'Sending Message<span class="loading"></span>';
+            responseDiv.style.display = 'none';
+            
+            // Prepare request body
+            const requestBody = {
+                text: text
+            };
+            
+            const userId = document.getElementById('userId').value.trim();
+            if (userId) requestBody.userId = userId;
+            
+            const sessionId = document.getElementById('sessionId').value.trim();
+            if (sessionId) requestBody.sessionId = sessionId;
+            
+            const channel = document.getElementById('channel').value.trim();
+            if (channel) requestBody.channel = channel;
+            
+            const metadata = document.getElementById('metadata').value.trim();
+            if (metadata) {
+                try {
+                    requestBody.metadata = JSON.parse(metadata);
+                } catch (e) {
+                    alert('Invalid JSON in metadata field!');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Send Message';
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch('/api/netomi/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response ' + (data.ok ? 'success' : 'error');
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response error';
+                responseDiv.textContent = 'Network Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Send Message';
+            }
+        }
+
+        // Auto-fill some sample data for testing
+        document.getElementById('messageText').value = 'Hello, this is a test message!';
+    </script>
+</body>
+</html>
