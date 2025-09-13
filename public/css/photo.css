@@ -1,0 +1,152 @@
+/* Photo Stack Styles */
+.photo-stack {
+    position: relative;
+    width: 240px;
+    height: 300px;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.stack-photo {
+    position: absolute;
+    width: 180px;
+    height: 240px; /* 3:4 aspect ratio */
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+}
+
+.stack-photo:nth-child(1) {
+    /* Top photo (photo1) - centered position */
+    top: 20px;
+    left: 50px;
+    z-index: 3;
+}
+
+.stack-photo:nth-child(2) {
+    /* Second photo (photo2) - rotated left, positioned behind and to the left */
+    top: 5px;
+    left: 20px;
+    z-index: 2;
+}
+
+.stack-photo:nth-child(3) {
+    /* Third photo (photo3) - rotated right, positioned behind and to the right */
+    top: 0px;
+    left: 15px;
+    z-index: 1;
+}
+
+/* Photo Overlay Styles */
+.photo-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    backdrop-filter: blur(5px);
+}
+
+.photo-overlay.show {
+    opacity: 1;
+}
+
+/* Expanded photo stack view - Grid Layout */
+.expanded-photos {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 columns */
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    max-width: 90vw;
+    max-height: 90vh;
+    padding: 20px;
+}
+
+.expanded-photo {
+    width: 150px;
+    height: 200px; /* 3:4 aspect ratio */
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    transform: rotate(0deg) !important; /* Reset rotation in expanded view */
+    justify-self: center; /* Center each photo in its grid cell */
+}
+
+.expanded-photo:hover {
+    transform: scale(1.05) !important;
+}
+
+/* Fullscreen photo view */
+.fullscreen-photo {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+}
+
+/* Close button */
+.photo-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.photo-close-btn:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Navigation arrows for fullscreen */
+.photo-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.photo-nav:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.photo-nav.prev {
+    left: 20px;
+}
+
+.photo-nav.next {
+    right: 20px;
+}
