@@ -101,7 +101,7 @@ async function netomiFetch(path, { method = 'POST', body } = {}) {
 
 // Generate token fetcher
 async function generateToken() {
-  const url = CONFIG.NETOMI_AUTH_URL;
+  const url = 'https://auth-us.netomi.com/v1/auth/generate-token';
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -119,6 +119,54 @@ async function generateToken() {
   return res.json();
 }
 
+// Refresh token fetcher
+async function refreshToken(refreshTokenValue) {
+  const url = 'https://auth-us.netomi.com/v1/auth/refresh-token';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'x-channel': CONFIG.CHANNEL,
+      'x-channel-ref-id': CONFIG.CHANNEL_REF_ID,
+      'x-virtual-agent-id': CONFIG.VIRTUAL_AGENT_ID,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      refreshToken: refreshTokenValue
+    }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Refresh Token API error: ${res.status} ${txt}`);
+  }
+
+  return res.json();
+}
+
+// Process message fetcher
+async function processMessage(messageData, authToken) {
+  const url = 'https://aiapi-us.netomi.com/v1/conversations/process-message';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'x-channel': CONFIG.CHANNEL,
+      'x-integration-channel': 'CHAT_API',
+      'x-channel-ref-id': CONFIG.CHANNEL_REF_ID,
+      'Content-Type': 'application/json',
+      'x-virtual-agent-id': CONFIG.VIRTUAL_AGENT_ID,
+      'x-auth-token': authToken,
+    },
+    body: JSON.stringify(messageData),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Process Message API error: ${res.status} ${txt}`);
+  }
+
+  return res.json();
+}
+
 // ------------------------------
 // Routes
 // ------------------------------
@@ -131,6 +179,46 @@ app.get('/api/netomi/generate-token', async (_req, res) => {
     return res.status(200).json({ ok: true, data });
   } catch (err) {
     console.error('Token fetch failed:', err);
+    return res.status(500).json({ ok: false, error: String(err.message || err) });
+  }
+});
+
+// Test route to call refresh-token API
+app.post('/api/netomi/refresh-token', async (req, res) => {
+  try {
+    const { refreshToken: refreshTokenValue } = req.body || {};
+    
+    if (!refreshTokenValue) {
+      return res.status(400).json({ error: 'Missing `refreshToken` in request body.' });
+    }
+
+    const data = await refreshToken(refreshTokenValue);
+    console.log('[Netomi refresh token]', data);
+    return res.status(200).json({ ok: true, data });
+  } catch (err) {
+    console.error('Refresh token failed:', err);
+    return res.status(500).json({ ok: false, error: String(err.message || err) });
+  }
+});
+
+// Test route to call process-message API
+app.post('/api/netomi/process-message', async (req, res) => {
+  try {
+    const { authToken, messageData } = req.body || {};
+    
+    if (!authToken) {
+      return res.status(400).json({ error: 'Missing `authToken` in request body.' });
+    }
+    
+    if (!messageData) {
+      return res.status(400).json({ error: 'Missing `messageData` in request body.' });
+    }
+
+    const data = await processMessage(messageData, authToken);
+    console.log('[Netomi process message]', data);
+    return res.status(200).json({ ok: true, data });
+  } catch (err) {
+    console.error('Process message failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
@@ -170,6 +258,8 @@ app.post('/api/netomi/send', async (req, res) => {
 
 
 app.get('/', (_req, res) => res.sendFile('index.html', { root: 'public' }));
+
+app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
 app.listen(CONFIG.PORT, () => {
   console.log(`Netomi Node server listening on http://localhost:${CONFIG.PORT}`);

@@ -56,7 +56,7 @@
             font-weight: bold;
         }
 
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 10px;
             background-color: #2a2a2a;
@@ -66,9 +66,14 @@
             font-size: 14px;
         }
 
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #00ff88;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
         }
 
         textarea {
@@ -158,35 +163,107 @@
             <div id="generateTokenResponse" class="response" style="display: none;"></div>
         </div>
 
+        <!-- Refresh Token API -->
+        <div class="api-section">
+            <h2>2. Refresh Token</h2>
+            <div class="endpoint-info">POST /api/netomi/refresh-token</div>
+            <p style="color: #ccc; margin-bottom: 15px;">Calls the external Netomi refresh-token API (POST to auth-us.netomi.com) with headers from .env</p>
+            
+            <div class="form-group">
+                <label for="refreshTokenInput">Refresh Token *</label>
+                <textarea id="refreshTokenInput" placeholder="Enter your refresh token here..." required></textarea>
+            </div>
+            
+            <button id="refreshTokenBtn" onclick="refreshToken()">Refresh Token</button>
+            <div id="refreshTokenResponse" class="response" style="display: none;"></div>
+        </div>
+
+        <!-- Process Message API -->
+        <div class="api-section">
+            <h2>3. Process Message</h2>
+            <div class="endpoint-info">POST /api/netomi/process-message</div>
+            <p style="color: #ccc; margin-bottom: 15px;">Calls the external Netomi process-message API (POST to aiapi-us.netomi.com) with headers from .env</p>
+            
+            <div class="form-group">
+                <label for="authToken">Auth Token *</label>
+                <input type="text" id="authToken" placeholder="Enter your auth token here..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="conversationId">Conversation ID *</label>
+                <input type="text" id="conversationId" placeholder="Enter conversation ID..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="messageText">Message Text *</label>
+                <textarea id="messageText" placeholder="Enter the message text..." required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="userId">User ID *</label>
+                <input type="text" id="userId" placeholder="Enter user ID..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="messageId">Message ID (optional)</label>
+                <input type="text" id="messageId" placeholder="Leave empty for auto-generated UUID">
+            </div>
+            
+            <div class="form-group">
+                <label for="ownerType">Owner Type</label>
+                <select id="ownerType">
+                    <option value="BOT">BOT</option>
+                    <option value="USER">USER</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="origin">Origin</label>
+                <select id="origin">
+                    <option value="WEB">WEB</option>
+                    <option value="MOBILE">MOBILE</option>
+                    <option value="API">API</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="hideMessage">Hide Message</label>
+                <input type="checkbox" id="hideMessage" checked>
+            </div>
+            
+            <button id="processMessageBtn" onclick="processMessage()">Process Message</button>
+            <div id="processMessageResponse" class="response" style="display: none;"></div>
+        </div>
+
         <!-- Send Message API -->
         <div class="api-section">
-            <h2>2. Send Message</h2>
+            <h2>4. Send Message</h2>
             <div class="endpoint-info">POST /api/netomi/send</div>
             <p style="color: #ccc; margin-bottom: 15px;">Send a user message to Netomi</p>
             
             <div class="form-group">
-                <label for="messageText">Message Text *</label>
-                <textarea id="messageText" placeholder="Enter your message here..." required></textarea>
+                <label for="sendMessageText">Message Text *</label>
+                <textarea id="sendMessageText" placeholder="Enter your message here..." required></textarea>
             </div>
             
             <div class="form-group">
-                <label for="userId">User ID (optional)</label>
-                <input type="text" id="userId" placeholder="Leave empty for auto-generated UUID">
+                <label for="sendUserId">User ID (optional)</label>
+                <input type="text" id="sendUserId" placeholder="Leave empty for auto-generated UUID">
             </div>
             
             <div class="form-group">
-                <label for="sessionId">Session ID (optional)</label>
-                <input type="text" id="sessionId" placeholder="Leave empty for auto-generated UUID">
+                <label for="sendSessionId">Session ID (optional)</label>
+                <input type="text" id="sendSessionId" placeholder="Leave empty for auto-generated UUID">
             </div>
             
             <div class="form-group">
-                <label for="channel">Channel (optional)</label>
-                <input type="text" id="channel" placeholder="Default: web" value="web">
+                <label for="sendChannel">Channel (optional)</label>
+                <input type="text" id="sendChannel" placeholder="Default: web" value="web">
             </div>
             
             <div class="form-group">
-                <label for="metadata">Metadata (optional JSON)</label>
-                <textarea id="metadata" placeholder='{"key": "value"}'></textarea>
+                <label for="sendMetadata">Metadata (optional JSON)</label>
+                <textarea id="sendMetadata" placeholder='{"key": "value"}'></textarea>
             </div>
             
             <button id="sendMessageBtn" onclick="sendMessage()">Send Message</button>
@@ -195,6 +272,100 @@
     </div>
 
     <script>
+        // Function to format Process Message response with enhanced display
+        function formatProcessMessageResponse(data) {
+            let html = '<div style="font-family: monospace;">';
+            
+            // Basic response info
+            html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 10px;">✓ Process Message Response</div>';
+            
+            // Check if we have Netomi response data
+            if (data.data && data.data.attachments && data.data.attachments.length > 0) {
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">🤖 Netomi AI Response:</div>';
+                
+                data.data.attachments.forEach((attachment, index) => {
+                    if (attachment.type === 'ai.msg.domain.responses.core.MultiSource') {
+                        html += formatMultiSourceAttachment(attachment.attachment);
+                    } else if (attachment.type === 'ai.msg.domain.responses.core.Text') {
+                        html += formatTextAttachment(attachment.attachment);
+                    }
+                });
+                html += '</div>';
+            }
+            
+            // Request info
+            if (data.data && data.data.requestPayload) {
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="color: #ffa500; font-weight: bold; margin-bottom: 8px;">📝 Request Info:</div>';
+                html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
+                html += `<div><strong>Message:</strong> "${data.data.requestPayload.messagePayload?.text || 'N/A'}"</div>`;
+                html += `<div><strong>User ID:</strong> ${data.data.requestPayload.userDetails?.userId || 'N/A'}</div>`;
+                html += `<div><strong>Conversation ID:</strong> ${data.data.requestPayload.conversationId || 'N/A'}</div>`;
+                html += '</div></div>';
+            }
+            
+            // Custom fields
+            if (data.data && data.data.customFields) {
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="color: #9370db; font-weight: bold; margin-bottom: 8px;">⚙️ Custom Fields:</div>';
+                html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
+                Object.entries(data.data.customFields).forEach(([key, value]) => {
+                    html += `<div><strong>${key}:</strong> ${value}</div>`;
+                });
+                html += '</div></div>';
+            }
+            
+            // Raw JSON (collapsible)
+            html += '<details style="margin-top: 15px;">';
+            html += '<summary style="color: #666; cursor: pointer;">📋 Show Raw JSON Response</summary>';
+            html += '<pre style="background: #0a0a0a; padding: 10px; border-radius: 4px; margin-top: 8px; overflow-x: auto; font-size: 11px;">';
+            html += JSON.stringify(data, null, 2);
+            html += '</pre></details>';
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function formatMultiSourceAttachment(attachment) {
+            let html = '<div style="background: #0a2f0a; border: 1px solid #00ff88; padding: 10px; border-radius: 4px; margin-bottom: 10px;">';
+            html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">📚 Knowledge Base Sources:</div>';
+            
+            if (attachment.multipleSourceDetails && attachment.multipleSourceDetails.length > 0) {
+                attachment.multipleSourceDetails.forEach((source, index) => {
+                    html += '<div style="margin-bottom: 5px;">';
+                    html += `<span style="color: #00ff88; font-weight: bold;">${source.index || index + 1}.</span> `;
+                    html += `<a href="${source.text}" target="_blank" style="color: #87ceeb; text-decoration: none;">${source.text}</a>`;
+                    if (source.uuid) {
+                        html += ` <span style="color: #666; font-size: 10px;">(${source.uuid.substring(0, 8)}...)</span>`;
+                    }
+                    html += '</div>';
+                });
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function formatTextAttachment(attachment) {
+            let html = '<div style="background: #0a2f2f; border: 1px solid #20b2aa; padding: 10px; border-radius: 4px; margin-bottom: 10px;">';
+            html += '<div style="color: #20b2aa; font-weight: bold; margin-bottom: 8px;">💬 AI Text Response:</div>';
+            
+            if (attachment.text) {
+                html += `<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">${attachment.text}</div>`;
+            }
+            
+            if (attachment.sourceUrl) {
+                html += '<div style="margin-top: 8px;">';
+                html += '<span style="color: #20b2aa; font-weight: bold;">Source: </span>';
+                html += `<a href="${attachment.sourceUrl}" target="_blank" style="color: #87ceeb; text-decoration: none;">${attachment.sourceUrl}</a>`;
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
         // Generate Token API Call
         async function generateToken() {
             const btn = document.getElementById('generateTokenBtn');
@@ -212,6 +383,32 @@
                 responseDiv.className = 'response ' + (data.ok ? 'success' : 'error');
                 responseDiv.textContent = JSON.stringify(data, null, 2);
                 
+                // Auto-fill Process Message section if token generation was successful
+                if (data.ok && data.data && data.data.payload && data.data.payload.token) {
+                    // Fill in the auth token
+                    document.getElementById('authToken').value = data.data.payload.token;
+                    
+                    // Fill in refresh token input if available
+                    if (data.data.payload.refreshToken) {
+                        document.getElementById('refreshTokenInput').value = data.data.payload.refreshToken;
+                    }
+                    
+                    // Show success message
+                    console.log('Auto-filled Process Message section with generated token');
+                    
+                    // Also auto-fill Send Message section with available data
+                    // Note: Send Message doesn't use auth token, but we can fill user/session info
+                    
+                    // Optional: Show a visual indicator that fields were auto-filled
+                    const authTokenField = document.getElementById('authToken');
+                    authTokenField.style.borderColor = '#00ff88';
+                    authTokenField.style.boxShadow = '0 0 5px rgba(0, 255, 136, 0.3)';
+                    setTimeout(() => {
+                        authTokenField.style.borderColor = '#555';
+                        authTokenField.style.boxShadow = 'none';
+                    }, 2000);
+                }
+                
             } catch (error) {
                 responseDiv.style.display = 'block';
                 responseDiv.className = 'response error';
@@ -222,12 +419,223 @@
             }
         }
 
+        // Refresh Token API Call
+        async function refreshToken() {
+            const btn = document.getElementById('refreshTokenBtn');
+            const responseDiv = document.getElementById('refreshTokenResponse');
+            
+            const refreshTokenValue = document.getElementById('refreshTokenInput').value.trim();
+            if (!refreshTokenValue) {
+                alert('Refresh token is required!');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = 'Refreshing Token<span class="loading"></span>';
+            responseDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/netomi/refresh-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refreshToken: refreshTokenValue
+                    })
+                });
+                
+                const data = await response.json();
+                
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response ' + (data.ok ? 'success' : 'error');
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                // Auto-fill Process Message section if refresh token was successful
+                if (data.ok && data.data && data.data.payload && data.data.payload.token) {
+                    // Fill in the auth token with the new token
+                    document.getElementById('authToken').value = data.data.payload.token;
+                    
+                    // Show success message
+                    console.log('Auto-filled Process Message section with refreshed token');
+                    
+                    // Visual indicator
+                    const authTokenField = document.getElementById('authToken');
+                    authTokenField.style.borderColor = '#00ff88';
+                    authTokenField.style.boxShadow = '0 0 5px rgba(0, 255, 136, 0.3)';
+                    setTimeout(() => {
+                        authTokenField.style.borderColor = '#555';
+                        authTokenField.style.boxShadow = 'none';
+                    }, 2000);
+                }
+                
+            } catch (error) {
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response error';
+                responseDiv.textContent = 'Network Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Refresh Token';
+            }
+        }
+
+        // Process Message API Call
+        async function processMessage() {
+            const btn = document.getElementById('processMessageBtn');
+            const responseDiv = document.getElementById('processMessageResponse');
+            
+            const authToken = document.getElementById('authToken').value.trim();
+            if (!authToken) {
+                alert('Auth token is required!');
+                return;
+            }
+            
+            const conversationId = document.getElementById('conversationId').value.trim();
+            if (!conversationId) {
+                alert('Conversation ID is required!');
+                return;
+            }
+            
+            const messageText = document.getElementById('messageText').value.trim();
+            if (!messageText) {
+                alert('Message text is required!');
+                return;
+            }
+            
+            const userId = document.getElementById('userId').value.trim();
+            if (!userId) {
+                alert('User ID is required!');
+                return;
+            }
+            
+            // Build message data from form inputs
+            const messageData = {
+                conversationId: conversationId,
+                ownerType: document.getElementById('ownerType').value,
+                messagePayload: {
+                    text: messageText,
+                    label: "",
+                    messageId: document.getElementById('messageId').value.trim() || crypto.randomUUID(),
+                    timestamp: Math.floor(Date.now() / 1000),
+                    hideMessage: document.getElementById('hideMessage').checked
+                },
+                userDetails: {
+                    userId: userId
+                },
+                origin: document.getElementById('origin').value,
+                eventType: "message",
+                additionalAttributes: {
+                    CUSTOM_ATTRIBUTES: [
+                        {
+                            type: "TEXT",
+                            name: "widget_id",
+                            value: "",
+                            scope: "LIFE_TIME"
+                        },
+                        {
+                            type: "TEXT",
+                            name: "visitor_url",
+                            value: window.location.href,
+                            scope: "LIFE_TIME"
+                        },
+                        {
+                            type: "TEXT",
+                            name: "current_user_agent",
+                            value: navigator.userAgent,
+                            scope: "LIFE_TIME"
+                        },
+                        {
+                            type: "TEXT",
+                            name: "current_device_type",
+                            value: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? "mobile" : "desktop",
+                            scope: "LIFE_TIME"
+                        },
+                        {
+                            type: "TEXT",
+                            name: "current_platform",
+                            value: navigator.platform,
+                            scope: "LIFE_TIME"
+                        }
+                    ]
+                }
+            };
+            
+            btn.disabled = true;
+            btn.innerHTML = 'Processing Message<span class="loading"></span>';
+            responseDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/netomi/process-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        authToken: authToken,
+                        messageData: messageData
+                    })
+                });
+                
+                const data = await response.json();
+                
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response ' + (data.ok ? 'success' : 'error');
+                
+                // Enhanced display for Process Message responses
+                if (data.ok && data.data) {
+                    responseDiv.innerHTML = formatProcessMessageResponse(data);
+                } else {
+                    responseDiv.textContent = JSON.stringify(data, null, 2);
+                }
+                
+                // Auto-fill Send Message section if process message was successful
+                if (data.ok && data.data) {
+                    // Fill Send Message fields with data from Process Message form
+                    const processUserId = document.getElementById('userId').value.trim();
+                    const processConversationId = document.getElementById('conversationId').value.trim();
+                    
+                    if (processUserId) {
+                        document.getElementById('sendUserId').value = processUserId;
+                    }
+                    
+                    // Use conversation ID as session ID for Send Message
+                    if (processConversationId) {
+                        document.getElementById('sendSessionId').value = processConversationId;
+                    }
+                    
+                    console.log('Auto-filled Send Message section from Process Message data');
+                    
+                    // Visual indicator for send fields
+                    const sendUserIdField = document.getElementById('sendUserId');
+                    const sendSessionIdField = document.getElementById('sendSessionId');
+                    [sendUserIdField, sendSessionIdField].forEach(field => {
+                        if (field.value) {
+                            field.style.borderColor = '#00ff88';
+                            field.style.boxShadow = '0 0 5px rgba(0, 255, 136, 0.3)';
+                            setTimeout(() => {
+                                field.style.borderColor = '#555';
+                                field.style.boxShadow = 'none';
+                            }, 2000);
+                        }
+                    });
+                }
+                
+            } catch (error) {
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response error';
+                responseDiv.textContent = 'Network Error: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Process Message';
+            }
+        }
+
         // Send Message API Call
         async function sendMessage() {
             const btn = document.getElementById('sendMessageBtn');
             const responseDiv = document.getElementById('sendMessageResponse');
             
-            const text = document.getElementById('messageText').value.trim();
+            const text = document.getElementById('sendMessageText').value.trim();
             if (!text) {
                 alert('Message text is required!');
                 return;
@@ -242,16 +650,16 @@
                 text: text
             };
             
-            const userId = document.getElementById('userId').value.trim();
+            const userId = document.getElementById('sendUserId').value.trim();
             if (userId) requestBody.userId = userId;
             
-            const sessionId = document.getElementById('sessionId').value.trim();
+            const sessionId = document.getElementById('sendSessionId').value.trim();
             if (sessionId) requestBody.sessionId = sessionId;
             
-            const channel = document.getElementById('channel').value.trim();
+            const channel = document.getElementById('sendChannel').value.trim();
             if (channel) requestBody.channel = channel;
             
-            const metadata = document.getElementById('metadata').value.trim();
+            const metadata = document.getElementById('sendMetadata').value.trim();
             if (metadata) {
                 try {
                     requestBody.metadata = JSON.parse(metadata);
@@ -289,7 +697,16 @@
         }
 
         // Auto-fill some sample data for testing
-        document.getElementById('messageText').value = 'Hello, this is a test message!';
+        document.getElementById('sendMessageText').value = 'Hello, this is a test message!';
+        
+        // Pre-fill process message form with sample data from curl
+        document.getElementById('conversationId').value = '7f4b29a1-c38d-420e-b3c9-94f8fdc112f9';
+        document.getElementById('messageText').value = 'How much time do I have to return something ? Where are the stores located';
+        document.getElementById('userId').value = '5113d6d7';
+        document.getElementById('messageId').value = 'd1f5a809-f20f-40e1-89cd-e8b9384d0dc7';
+        document.getElementById('ownerType').value = 'BOT';
+        document.getElementById('origin').value = 'WEB';
+        document.getElementById('hideMessage').checked = true;
     </script>
 </body>
 </html>
