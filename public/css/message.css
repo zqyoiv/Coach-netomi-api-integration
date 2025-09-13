@@ -139,3 +139,42 @@
 .rexy-3d-gif {
     object-fit: contain;
 }
+
+/* Photo Stack Styles */
+.photo-stack {
+    position: relative;
+    width: 240px;
+    height: 300px;
+    margin: 10px 0;
+}
+
+.stack-photo {
+    position: absolute;
+    width: 180px;
+    height: 240px; /* 3:4 aspect ratio */
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+}
+
+.stack-photo:nth-child(1) {
+    /* Top photo (photo1) - centered position */
+    top: 20px;
+    left: 50px;
+    z-index: 3;
+}
+
+.stack-photo:nth-child(2) {
+    /* Second photo (photo2) - rotated left, positioned behind and to the left */
+    top: 5px;
+    left: 20px;
+    z-index: 2;
+}
+
+.stack-photo:nth-child(3) {
+    /* Third photo (photo3) - rotated right, positioned behind and to the right */
+    top: 0px;
+    left: 15px;
+    z-index: 1;
+}

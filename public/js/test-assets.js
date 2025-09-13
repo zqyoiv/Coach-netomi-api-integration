@@ -10,6 +10,11 @@ function is3DCommand(text) {
     return text.startsWith('3d-') && text.length > 3;
 }
 
+// Function to check if message is a photo command
+function isPhotoCommand(text) {
+    return text === 'show-photos';
+}
+
 // Function to get sticker name from command
 function getStickerName(text) {
     return text.substring(2); // Remove 's-' prefix
@@ -93,10 +98,62 @@ function show3DAnimation(animationName) {
     }
 }
 
-// Function to handle test commands (stickers and 3D animations)
+// Function to show photo stack
+function showPhotoStack(chatMessages) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot-message';
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    
+    // Create photo stack container
+    const photoStack = document.createElement('div');
+    photoStack.className = 'photo-stack';
+    
+    // Create three photos with different rotations
+    const photos = [
+        { src: 'image/example-photo/photo1.png', rotation: '0deg', zIndex: 3 },
+        { src: 'image/example-photo/photo2.png', rotation: '-4.494deg', zIndex: 2 },
+        { src: 'image/example-photo/photo3.png', rotation: '3.972deg', zIndex: 1 }
+    ];
+    
+    photos.forEach((photo, index) => {
+        const img = document.createElement('img');
+        img.src = photo.src;
+        img.alt = `Photo ${index + 1}`;
+        img.className = 'stack-photo';
+        img.style.transform = `rotate(${photo.rotation})`;
+        img.style.zIndex = photo.zIndex;
+        img.onerror = function() {
+            console.error(`Photo ${index + 1} not found: ${photo.src}`);
+        };
+        photoStack.appendChild(img);
+    });
+    
+    messageContent.appendChild(photoStack);
+    messageDiv.appendChild(messageContent);
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Function to handle test commands (stickers, 3D animations, and photos)
 function handleTestCommand(text, chatMessages, addMessage) {
+    // Check if it's a photo command
+    if (isPhotoCommand(text)) {
+        // Add user's photo command as text message
+        addMessage(text, true);
+        
+        // Show photo stack
+        setTimeout(() => {
+            showPhotoStack(chatMessages);
+        }, 500);
+        
+        return true; // Command was handled
+    }
     // Check if it's a 3D command
-    if (is3DCommand(text)) {
+    else if (is3DCommand(text)) {
         const animationName = get3DName(text);
         
         // Add user's 3D command as text message
