@@ -54,8 +54,15 @@ document.addEventListener('DOMContentLoaded', function() {
     sendButton.addEventListener('click', sendMessage);
     
     chatInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             sendMessage();
         }
+    });
+    
+    // Auto-resize textarea as user types
+    chatInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 60) + 'px';
     });
 });
