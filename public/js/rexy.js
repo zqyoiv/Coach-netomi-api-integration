@@ -115,21 +115,76 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
     
+    // Function to check if message is a sticker command
+    function isStickerCommand(text) {
+        return text.startsWith('s-') && text.length > 2;
+    }
+    
+    // Function to get sticker name from command
+    function getStickerName(text) {
+        return text.substring(2); // Remove 's-' prefix
+    }
+    
+    // Function to send sticker message
+    function sendStickerMessage(stickerName) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const stickerImg = document.createElement('img');
+        stickerImg.src = `image/stickers/${stickerName}.gif`;
+        stickerImg.alt = stickerName;
+        stickerImg.className = 'sticker';
+        stickerImg.onerror = function() {
+            // If sticker doesn't exist, show error message instead
+            messageContent.innerHTML = '';
+            const messageBubble = document.createElement('div');
+            messageBubble.className = 'message-bubble bot-bubble';
+            messageBubble.textContent = `Sorry, I don't have a "${stickerName}" sticker. Available stickers: hi, drink, and others!`;
+            messageContent.appendChild(messageBubble);
+        };
+        messageContent.appendChild(stickerImg);
+        
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     // Function to send message
     function sendMessage() {
         const text = chatInput.value.trim();
         if (text === '') return;
         
-        // Add user message
-        addMessage(text, true);
-        
-        // Clear input
-        chatInput.value = '';
-        
-        // Optional: Add bot response after a delay (for demo purposes)
-        setTimeout(() => {
-            addMessage("Thanks for your message! How else can I help you with Coach products?", false);
-        }, 1000);
+        // Check if it's a sticker command
+        if (isStickerCommand(text)) {
+            const stickerName = getStickerName(text);
+            
+            // Add user's sticker command as text message
+            addMessage(text, true);
+            
+            // Clear input
+            chatInput.value = '';
+            
+            // Send sticker response
+            setTimeout(() => {
+                sendStickerMessage(stickerName);
+            }, 500);
+        } else {
+            // Regular message
+            addMessage(text, true);
+            
+            // Clear input
+            chatInput.value = '';
+            
+            // Optional: Add bot response after a delay (for demo purposes)
+            setTimeout(() => {
+                addMessage("Thanks for your message! How else can I help you with Coach products?", false);
+            }, 1000);
+        }
     }
     
     // Event listeners
