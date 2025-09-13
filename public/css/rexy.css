@@ -149,6 +149,30 @@ body {
     z-index: 1;
 }
 
+/* Fullscreen 3D Overlay */
+.rexy-3d-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(233, 230, 223, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.rexy-3d-overlay.show {
+    opacity: 1;
+}
+
+.rexy-3d-gif {
+    object-fit: contain;
+}
+
 .message {
     display: flex;
     align-items: flex-start;

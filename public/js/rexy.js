@@ -150,9 +150,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return text.startsWith('s-') && text.length > 2;
     }
     
+    // Function to check if message is a 3D command
+    function is3DCommand(text) {
+        return text.startsWith('3d-') && text.length > 3;
+    }
+    
     // Function to get sticker name from command
     function getStickerName(text) {
         return text.substring(2); // Remove 's-' prefix
+    }
+    
+    // Function to get 3D animation name from command
+    function get3DName(text) {
+        return text.substring(3); // Remove '3d-' prefix
     }
     
     // Function to send sticker message
@@ -183,14 +193,73 @@ document.addEventListener('DOMContentLoaded', function() {
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+    
+    // Function to show 3D overlay animation
+    function show3DAnimation(animationName) {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'rexy-3d-overlay';
+        overlay.id = 'rexy-3d-overlay';
+        
+        // Create GIF element
+        const gif = document.createElement('img');
+        gif.src = `image/3d/Rexy_${animationName.charAt(0).toUpperCase() + animationName.slice(1)}.gif`;
+        gif.alt = `Rexy ${animationName}`;
+        gif.className = 'rexy-3d-gif';
+        gif.onerror = function() {
+            // If GIF doesn't exist, show error and remove overlay
+            console.error(`3D animation "${animationName}" not found`);
+            removeOverlay();
+        };
+        
+        overlay.appendChild(gif);
+        document.body.appendChild(overlay);
+        
+        // Show overlay with fade-in
+        setTimeout(() => {
+            overlay.classList.add('show');
+        }, 10);
+        
+        // Remove overlay after 5 seconds
+        setTimeout(() => {
+            removeOverlay();
+        }, 5000);
+        
+        function removeOverlay() {
+            const existingOverlay = document.getElementById('rexy-3d-overlay');
+            if (existingOverlay) {
+                existingOverlay.classList.remove('show');
+                setTimeout(() => {
+                    if (existingOverlay.parentNode) {
+                        existingOverlay.parentNode.removeChild(existingOverlay);
+                    }
+                }, 300);
+            }
+        }
+    }
 
     // Function to send message
     function sendMessage() {
         const text = chatInput.value.trim();
         if (text === '') return;
         
+        // Check if it's a 3D command
+        if (is3DCommand(text)) {
+            const animationName = get3DName(text);
+            
+            // Add user's 3D command as text message
+            addMessage(text, true);
+            
+            // Clear input
+            chatInput.value = '';
+            
+            // Show 3D animation
+            setTimeout(() => {
+                show3DAnimation(animationName);
+            }, 500);
+        }
         // Check if it's a sticker command
-        if (isStickerCommand(text)) {
+        else if (isStickerCommand(text)) {
             const stickerName = getStickerName(text);
             
             // Add user's sticker command as text message
