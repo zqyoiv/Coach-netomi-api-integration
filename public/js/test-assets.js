@@ -1,0 +1,128 @@
+// Testing assets functionality for stickers and 3D animations
+
+// Function to check if message is a sticker command
+function isStickerCommand(text) {
+    return text.startsWith('s-') && text.length > 2;
+}
+
+// Function to check if message is a 3D command
+function is3DCommand(text) {
+    return text.startsWith('3d-') && text.length > 3;
+}
+
+// Function to get sticker name from command
+function getStickerName(text) {
+    return text.substring(2); // Remove 's-' prefix
+}
+
+// Function to get 3D animation name from command
+function get3DName(text) {
+    return text.substring(3); // Remove '3d-' prefix
+}
+
+// Function to send sticker message
+function sendStickerMessage(stickerName, chatMessages) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot-message';
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    
+    const stickerImg = document.createElement('img');
+    stickerImg.src = `image/stickers/${stickerName}.gif`;
+    stickerImg.alt = stickerName;
+    stickerImg.className = 'sticker';
+    stickerImg.onerror = function() {
+        // If sticker doesn't exist, show error message instead
+        messageContent.innerHTML = '';
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble bot-bubble';
+        messageBubble.textContent = `Sorry, I don't have a "${stickerName}" sticker. Available stickers: hi, drink, igotu, ok, really!`;
+        messageContent.appendChild(messageBubble);
+    };
+    messageContent.appendChild(stickerImg);
+    
+    messageDiv.appendChild(messageContent);
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Function to show 3D overlay animation
+function show3DAnimation(animationName) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'rexy-3d-overlay';
+    overlay.id = 'rexy-3d-overlay';
+    
+    // Create GIF element
+    const gif = document.createElement('img');
+    gif.src = `image/3d/Rexy_${animationName.charAt(0).toUpperCase() + animationName.slice(1)}.gif`;
+    gif.alt = `Rexy ${animationName}`;
+    gif.className = 'rexy-3d-gif';
+    gif.onerror = function() {
+        // If GIF doesn't exist, show error and remove overlay
+        console.error(`3D animation "${animationName}" not found`);
+        removeOverlay();
+    };
+    
+    overlay.appendChild(gif);
+    document.body.appendChild(overlay);
+    
+    // Show overlay with fade-in
+    setTimeout(() => {
+        overlay.classList.add('show');
+    }, 10);
+    
+    // Remove overlay after 5 seconds
+    setTimeout(() => {
+        removeOverlay();
+    }, 5000);
+    
+    function removeOverlay() {
+        const existingOverlay = document.getElementById('rexy-3d-overlay');
+        if (existingOverlay) {
+            existingOverlay.classList.remove('show');
+            setTimeout(() => {
+                if (existingOverlay.parentNode) {
+                    existingOverlay.parentNode.removeChild(existingOverlay);
+                }
+            }, 300);
+        }
+    }
+}
+
+// Function to handle test commands (stickers and 3D animations)
+function handleTestCommand(text, chatMessages, addMessage) {
+    // Check if it's a 3D command
+    if (is3DCommand(text)) {
+        const animationName = get3DName(text);
+        
+        // Add user's 3D command as text message
+        addMessage(text, true);
+        
+        // Show 3D animation
+        setTimeout(() => {
+            show3DAnimation(animationName);
+        }, 500);
+        
+        return true; // Command was handled
+    }
+    // Check if it's a sticker command
+    else if (isStickerCommand(text)) {
+        const stickerName = getStickerName(text);
+        
+        // Add user's sticker command as text message
+        addMessage(text, true);
+        
+        // Send sticker response
+        setTimeout(() => {
+            sendStickerMessage(stickerName, chatMessages);
+        }, 500);
+        
+        return true; // Command was handled
+    }
+    
+    return false; // Command was not handled
+}

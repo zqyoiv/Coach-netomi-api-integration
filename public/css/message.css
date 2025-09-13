@@ -1,0 +1,141 @@
+/* Message-related styles */
+
+/* Message layout */
+.message {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.bot-message {
+    justify-content: flex-start;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.message-content {
+    max-width: 70%;
+    padding: 0;
+    overflow: hidden;
+    word-wrap: break-word;
+}
+
+/* Message bubbles */
+.message-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 16px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    display: inline-block;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.user-bubble {
+    background-color: #ffffff;
+    color: #333333;
+    border-bottom-right-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.bot-bubble {
+    background-color: #000000;
+    color: #ffffff;
+    border-bottom-left-radius: 6px;
+}
+
+/* Sticker styles */
+.sticker {
+    width: 117px;
+    height: 108px;
+    object-fit: cover;
+}
+
+/* Quick Reply Options */
+.quick-replies-container {
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.quick-reply-option {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #e0e0e0;
+    border-radius: 18px;
+    padding: 12px 16px;
+    font-size: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: fit-content;
+    max-width: 100%;
+    word-wrap: break-word;
+}
+
+.quick-reply-option:hover {
+    background-color: #f5f5f5;
+}
+
+.quick-reply-option.selected {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+
+.quick-reply-option:disabled {
+    cursor: not-allowed;
+}
+
+/* Walking Rexy Background */
+.walking-rexy {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100%;
+    z-index: 0;
+    opacity: 0.8;
+    pointer-events: none;
+    transition: opacity 0.5s ease-out;
+}
+
+.walking-rexy.hidden {
+    opacity: 0;
+}
+
+/* Fullscreen 3D Overlay */
+.rexy-3d-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(233, 230, 223, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.rexy-3d-overlay.show {
+    opacity: 1;
+}
+
+.rexy-3d-gif {
+    object-fit: contain;
+}
