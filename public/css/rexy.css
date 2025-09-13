@@ -123,6 +123,30 @@ body {
     flex-direction: column;
     gap: 16px;
     word-wrap: break-word;
+    position: relative;
+}
+
+/* Walking Rexy Background */
+.walking-rexy {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100%;
+    z-index: 0;
+    opacity: 0.8;
+    pointer-events: none;
+    transition: opacity 0.5s ease-out;
+}
+
+.walking-rexy.hidden {
+    opacity: 0;
+}
+
+/* Ensure messages appear above walking Rexy */
+.message {
+    position: relative;
+    z-index: 1;
 }
 
 .message {

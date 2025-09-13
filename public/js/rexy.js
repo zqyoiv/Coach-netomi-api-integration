@@ -67,6 +67,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to handle quick reply selection
     function handleQuickReply(text, buttonElement) {
+        // Hide walking Rexy when user makes a choice
+        hideWalkingRexy();
+        
         // Change button appearance to selected state
         buttonElement.className = 'quick-reply-option selected';
         
@@ -96,8 +99,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
     
+    // Function to add walking Rexy background
+    function addWalkingRexy() {
+        const walkingRexy = document.createElement('img');
+        walkingRexy.src = 'image/3d/Rexy_Walk.gif';
+        walkingRexy.alt = 'Walking Rexy';
+        walkingRexy.className = 'walking-rexy';
+        walkingRexy.id = 'walking-rexy';
+        chatMessages.appendChild(walkingRexy);
+    }
+    
+    // Function to hide walking Rexy
+    function hideWalkingRexy() {
+        const walkingRexy = document.getElementById('walking-rexy');
+        if (walkingRexy) {
+            walkingRexy.classList.add('hidden');
+            // Remove from DOM after animation
+            setTimeout(() => {
+                if (walkingRexy.parentNode) {
+                    walkingRexy.parentNode.removeChild(walkingRexy);
+                }
+            }, 500);
+        }
+    }
+
     // Initialize chat with welcome message and options
     function initializeChat() {
+        // Add walking Rexy immediately
+        addWalkingRexy();
+        
         // Show sticker, welcome message and options together 1 second after page load
         setTimeout(() => {
             // Add sticker first
