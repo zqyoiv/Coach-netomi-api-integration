@@ -101,8 +101,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to add walking Rexy background
     function addWalkingRexy() {
+        // Try to get cached animation first
+        const cachedWalking = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Walk');
+        
         const walkingRexy = document.createElement('img');
-        walkingRexy.src = 'image/3d/Rexy_Walk.gif';
+        
+        if (cachedWalking) {
+            // Use cached image
+            walkingRexy.src = cachedWalking.src;
+            console.log('🚀 Using cached walking animation');
+        } else {
+            // Fallback to loading image normally
+            walkingRexy.src = 'image/3d/Rexy_Walk.gif';
+            console.log('⏳ Loading walking animation from server');
+        }
+        
         walkingRexy.alt = 'Walking Rexy';
         walkingRexy.className = 'walking-rexy';
         walkingRexy.id = 'walking-rexy';

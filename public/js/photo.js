@@ -20,8 +20,22 @@ function showPhotoStack(chatMessages) {
     ];
     
     photos.forEach((photo, index) => {
+        // Try to get cached photo first
+        const photoName = photo.src.split('/').pop().replace('.png', '');
+        const cachedPhoto = window.AssetPreloader && window.AssetPreloader.getPhoto(photoName);
+        
         const img = document.createElement('img');
-        img.src = photo.src;
+        
+        if (cachedPhoto) {
+            // Use cached image
+            img.src = cachedPhoto.src;
+            console.log(`🚀 Using cached photo: ${photoName}`);
+        } else {
+            // Fallback to loading image normally
+            img.src = photo.src;
+            console.log(`⏳ Loading photo from server: ${photoName}`);
+        }
+        
         img.alt = `Photo ${index + 1}`;
         img.className = 'stack-photo';
         img.style.transform = `rotate(${photo.rotation})`;

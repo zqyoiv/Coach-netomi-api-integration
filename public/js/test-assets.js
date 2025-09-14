@@ -29,8 +29,21 @@ function sendStickerMessage(stickerName, chatMessages) {
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     
+    // Try to get cached sticker first
+    const cachedSticker = window.AssetPreloader && window.AssetPreloader.getSticker(stickerName);
+    
     const stickerImg = document.createElement('img');
-    stickerImg.src = `image/stickers/${stickerName}.gif`;
+    
+    if (cachedSticker) {
+        // Use cached image
+        stickerImg.src = cachedSticker.src;
+        console.log(`🚀 Using cached sticker: ${stickerName}`);
+    } else {
+        // Fallback to loading image normally
+        stickerImg.src = `image/stickers/${stickerName}.gif`;
+        console.log(`⏳ Loading sticker from server: ${stickerName}`);
+    }
+    
     stickerImg.alt = stickerName;
     stickerImg.className = 'sticker';
     stickerImg.onerror = function() {
@@ -57,9 +70,22 @@ function show3DAnimation(animationName) {
     overlay.className = 'rexy-3d-overlay';
     overlay.id = 'rexy-3d-overlay';
     
+    // Try to get cached animation first
+    const cachedAnimation = window.AssetPreloader && window.AssetPreloader.getAnimation(`Rexy_${animationName.charAt(0).toUpperCase() + animationName.slice(1)}`);
+    
     // Create GIF element
     const gif = document.createElement('img');
-    gif.src = `image/3d/Rexy_${animationName.charAt(0).toUpperCase() + animationName.slice(1)}.gif`;
+    
+    if (cachedAnimation) {
+        // Use cached image
+        gif.src = cachedAnimation.src;
+        console.log(`🚀 Using cached animation: Rexy_${animationName}`);
+    } else {
+        // Fallback to loading image normally
+        gif.src = `image/3d/Rexy_${animationName.charAt(0).toUpperCase() + animationName.slice(1)}.gif`;
+        console.log(`⏳ Loading animation from server: Rexy_${animationName}`);
+    }
+    
     gif.alt = `Rexy ${animationName}`;
     gif.className = 'rexy-3d-gif';
     gif.onerror = function() {
