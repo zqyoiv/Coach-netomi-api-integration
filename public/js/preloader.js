@@ -27,11 +27,11 @@ class AssetPreloader {
              ],
              animations: [
                  'Rexy_Check.gif',
-                 'Rexy_RecivePhoto.gif',
-                 'Rexy_searching.gif',
+                 'Rexy_Recivephoto.gif',
+                 'Rexy_Searching.gif',
                  'Rexy_Thinking.gif',
                  'Rexy_Walk.gif',
-                 'Rexy_watchReel.gif'
+                 'Rexy_Watchreel.gif'
              ],
             photos: [
                 'photo1.png',
