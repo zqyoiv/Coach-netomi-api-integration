@@ -149,23 +149,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to send message
     function sendMessage() {
         const text = chatInput.value.trim();
-        if (text === '') return;
         
-        // Check if it's a test command (stickers or 3D animations)
-        if (handleTestCommand(text, chatMessages, addMessage)) {
-            // Clear input if test command was handled
+        // Check for test commands first
+        if (text && handleTestCommand && handleTestCommand(text, chatMessages, addMessage)) {
             chatInput.value = '';
-        } else {
-            // Regular message
+            chatInput.style.height = 'auto';
+            return;
+        }
+        
+        // Send text message if there's text
+        if (text) {
             addMessage(text, true);
+        }
+        
+        // Send images if there are any
+        if (selectedImages && selectedImages.length > 0) {
+            selectedImages.forEach(imageData => {
+                addImageMessage(imageData.src, true);
+            });
             
-            // Clear input
-            chatInput.value = '';
+            // Clear selected images
+            selectedImages = [];
+            const container = document.getElementById('imagePreviewContainer');
+            if (container) {
+                container.innerHTML = '';
+                container.style.display = 'none';
+                const inputWrapper = container.closest('.input-wrapper');
+                const inputContainer = document.querySelector('.chat-input-container');
+                if (inputWrapper) {
+                    inputWrapper.classList.remove('with-images');
+                }
+                if (inputContainer) {
+                    inputContainer.classList.remove('with-images');
+                }
+            }
             
-            // Optional: Add bot response after a delay (for demo purposes)
+            // Add bot response for images
             setTimeout(() => {
-                addMessage("Thanks for your message! How else can I help you with Coach products?", false);
+                addMessage("I can see your photos! How can I help you with them?", false);
             }, 1000);
+        }
+        
+        // Clear input if there was text or images sent
+        if (text || (selectedImages && selectedImages.length > 0)) {
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            
+            // Simple bot response for text messages (only if no images were sent)
+            if (text && (!selectedImages || selectedImages.length === 0)) {
+                setTimeout(() => {
+                    addMessage("Thanks for your message! How else can I help you with Coach products?", false);
+                }, 1000);
+            }
         }
     }
     
@@ -184,7 +219,214 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = 'auto';
         this.style.height = Math.min(this.scrollHeight, 60) + 'px';
     });
+
+// Photo/Camera functionality
+let selectedImages = [];
+
+function setupPhotoFunctionality() {
+    const addButton = document.getElementById('addButton');
+    const popup = document.getElementById('photoOptionsPopup');
+    const cameraOption = document.getElementById('cameraOption');
+    const photoOption = document.getElementById('photoOption');
+    const cameraInput = document.getElementById('cameraInput');
+    const photoInput = document.getElementById('photoInput');
+
+    // Add button click handler
+    addButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        popup.classList.toggle('show');
+    });
+
+    // Close popup when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!popup.contains(e.target) && !addButton.contains(e.target)) {
+            popup.classList.remove('show');
+        }
+    });
+
+    // Camera option click
+    cameraOption.addEventListener('click', function() {
+        cameraInput.click();
+        popup.classList.remove('show');
+    });
+
+    // Photo option click
+    photoOption.addEventListener('click', function() {
+        photoInput.click();
+        popup.classList.remove('show');
+    });
+
+    // Handle camera input
+    cameraInput.addEventListener('change', function(e) {
+        handleImageSelection(e.target.files);
+        e.target.value = ''; // Reset input
+    });
+
+    // Handle photo input
+    photoInput.addEventListener('change', function(e) {
+        handleImageSelection(e.target.files);
+        e.target.value = ''; // Reset input
+    });
+}
+
+// Handle image selection
+function handleImageSelection(files) {
+    Array.from(files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                addImagePreview(e.target.result, file);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+// Add image preview to input area
+function addImagePreview(imageSrc, file) {
+    const container = document.getElementById('imagePreviewContainer');
+    const preview = document.createElement('div');
+    preview.className = 'image-preview';
+    
+    const img = document.createElement('img');
+    img.src = imageSrc;
+    img.alt = 'Selected image';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.innerHTML = '×';
+    removeBtn.onclick = function() {
+        const index = selectedImages.findIndex(item => item.file === file);
+        if (index > -1) {
+            selectedImages.splice(index, 1);
+        }
+        preview.remove();
+        
+        // Hide container if no images
+        if (selectedImages.length === 0) {
+            container.style.display = 'none';
+            const inputWrapper = container.closest('.input-wrapper');
+            const inputContainer = document.querySelector('.chat-input-container');
+            if (inputWrapper) {
+                inputWrapper.classList.remove('with-images');
+            }
+            if (inputContainer) {
+                inputContainer.classList.remove('with-images');
+            }
+        }
+    };
+    
+    preview.appendChild(img);
+    preview.appendChild(removeBtn);
+    container.appendChild(preview);
+    
+    // Store image data
+    selectedImages.push({
+        file: file,
+        src: imageSrc,
+        element: preview
+    });
+    
+    // Show container and adjust wrapper height
+    container.style.display = 'flex';
+    const inputWrapper = container.closest('.input-wrapper');
+    const inputContainer = document.querySelector('.chat-input-container');
+    if (inputWrapper) {
+        inputWrapper.classList.add('with-images');
+    }
+    if (inputContainer) {
+        inputContainer.classList.add('with-images');
+    }
+}
+
+// Add image message to chat
+function addImageMessage(imageSrc, isUser) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    
+    const messageImg = document.createElement('img');
+    messageImg.src = imageSrc;
+    messageImg.style.maxWidth = '200px';
+    messageImg.style.maxHeight = '200px';
+    messageImg.style.borderRadius = '8px';
+    messageImg.style.objectFit = 'cover';
+    messageImg.style.cursor = 'pointer';
+    
+    // Add click handler to open in fullscreen
+    messageImg.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openSinglePhotoView(imageSrc);
+    });
+    
+    messageContent.appendChild(messageImg);
+    messageDiv.appendChild(messageContent);
+    chatMessages.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Function to open single photo in fullscreen view
+function openSinglePhotoView(imageSrc) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'photo-overlay';
+    overlay.id = 'single-photo-overlay';
+    
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'photo-close-btn';
+    closeBtn.innerHTML = '×';
+    closeBtn.onclick = function(e) {
+        e.stopPropagation();
+        closeSinglePhotoView();
+    };
+    
+    // Create fullscreen photo
+    const img = document.createElement('img');
+    img.src = imageSrc;
+    img.className = 'fullscreen-photo';
+    img.onclick = function(e) {
+        e.stopPropagation();
+        closeSinglePhotoView();
+    };
+    
+    overlay.appendChild(closeBtn);
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+    
+    // Show overlay with fade-in
+    setTimeout(() => {
+        overlay.classList.add('show');
+    }, 10);
+    
+    // Close on overlay click
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            closeSinglePhotoView();
+        }
+    });
+}
+
+// Function to close single photo view
+function closeSinglePhotoView() {
+    const overlay = document.getElementById('single-photo-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, 300);
+    }
+}
     
     // Initialize the chat
     initializeChat();
+    
+    // Photo/Camera functionality
+    setupPhotoFunctionality();
 });

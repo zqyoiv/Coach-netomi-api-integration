@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/rexy.css">
     <link rel="stylesheet" href="css/message.css">
     <link rel="stylesheet" href="css/photo.css">
+    <link rel="stylesheet" href="css/camera.css">
     <script src="js/test-assets.js"></script>
     <script src="js/photo.js"></script>
     <script src="js/rexy.js"></script>
@@ -36,23 +37,36 @@
         <!-- Input Area -->
         <div class="chat-input-container">
             <div class="input-wrapper">
+                <!-- Image preview area -->
+                <div class="image-preview-container" id="imagePreviewContainer" style="display: none;"></div>
+                
                 <textarea class="chat-input" placeholder="Ask your Teri questions here..." rows="1"></textarea>
                 <div class="button-row">
-                    <button class="add-button">
+                    <button class="add-button" id="addButton">
                         <img src="image/ui-icon/add.svg" alt="Add" class="icon">
                     </button>
                     <button class="send-button">
                         <img src="image/ui-icon/send.svg" alt="Send" class="icon">
                     </button>
                 </div>
+                
+                <!-- Photo options popup -->
+                <div class="photo-options-popup" id="photoOptionsPopup">
+                    <button class="photo-option" id="cameraOption">
+                        <span>Camera</span>
+                    </button>
+                    <button class="photo-option" id="photoOption">
+                        <span>Photos</span>
+                    </button>
+                </div>
+                
+                <!-- Hidden file inputs -->
+                <input type="file" id="cameraInput" class="hidden-input" accept="image/*" capture="environment">
+                <input type="file" id="photoInput" class="hidden-input" accept="image/*" multiple>
             </div>
             <div class="terms-footer">
                 <span>By using this app, you agree to the </span>
                 <a href="#" class="terms-link">Terms of Use</a>
-            </div>
-            <div class="website-footer">
-                <img src="image/coach/coach-logo.svg" alt="Coach" class="coach-logo">
-                <span class="website-url">coach.com/rexy-ai</span>
             </div>
         </div>
     </div>
