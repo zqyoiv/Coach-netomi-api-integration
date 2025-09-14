@@ -143,9 +143,37 @@ async function refreshToken(refreshTokenValue) {
   return res.json();
 }
 
-// Process message fetcher
-async function processMessage(messageData, authToken) {
+// Process message fetcher with webhook support
+async function processMessage(messageData, authToken, waitForWebhook = true, timeoutMs = 30000) {
   const url = 'https://aiapi-us.netomi.com/v1/conversations/process-message';
+  
+  // Create a unique request ID to track this request
+  const requestId = messageData.conversationId || crypto.randomUUID();
+  
+  // Set up promise for webhook response if waiting
+  let webhookPromise = null;
+  if (waitForWebhook) {
+    webhookPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Webhook response timeout'));
+      }, timeoutMs);
+      
+      pendingRequests.set(requestId, {
+        resolve: (payload) => {
+          clearTimeout(timeout);
+          resolve(payload);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        },
+        timestamp: Date.now()
+      });
+    });
+  }
+  
+  // Send the message to Netomi
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -160,16 +188,151 @@ async function processMessage(messageData, authToken) {
   });
 
   if (!res.ok) {
+    if (waitForWebhook) {
+      pendingRequests.delete(requestId);
+    }
     const txt = await res.text();
     throw new Error(`Process Message API error: ${res.status} ${txt}`);
   }
 
-  return res.json();
+  const acknowledgment = await res.json();
+  
+  if (!waitForWebhook) {
+    // Return just the acknowledgment
+    return { acknowledgment };
+  }
+  
+  try {
+    // Wait for webhook response
+    const webhookResponse = await webhookPromise;
+    return {
+      acknowledgment,
+      webhookResponse,
+      requestId
+    };
+  } catch (error) {
+    console.error(`[Process Message] Webhook timeout for request ${requestId}:`, error);
+    return {
+      acknowledgment,
+      webhookResponse: null,
+      error: error.message,
+      requestId
+    };
+  }
 }
+
+// ------------------------------
+// In-memory storage for pending requests (in production, use Redis or database)
+// ------------------------------
+const pendingRequests = new Map(); // requestId -> { resolve, reject, timestamp }
+const conversations = new Map(); // conversationId -> messages array
 
 // ------------------------------
 // Routes
 // ------------------------------
+
+// Webhook endpoint to receive Netomi responses
+app.post('/webhook/netomi', express.raw({ type: 'application/json' }), (req, res) => {
+  try {
+    console.log('[Netomi Webhook] Received webhook call');
+    console.log('[Netomi Webhook] Headers:', req.headers);
+    
+    // Parse the body
+    let payload;
+    try {
+      payload = JSON.parse(req.body);
+    } catch (e) {
+      console.error('[Netomi Webhook] Failed to parse JSON:', e);
+      return res.status(400).json({ error: 'Invalid JSON payload' });
+    }
+    
+    console.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
+    
+    // Validate webhook signature if secret is configured
+    if (CONFIG.WEBHOOK_SECRET) {
+      const signature = req.headers['x-netomi-signature'] || req.headers['x-signature'];
+      if (!signature) {
+        console.warn('[Netomi Webhook] No signature header found');
+        return res.status(401).json({ error: 'Missing signature' });
+      }
+      
+      // Verify signature (implementation depends on Netomi's signing method)
+      const expectedSignature = crypto
+        .createHmac('sha256', CONFIG.WEBHOOK_SECRET)
+        .update(req.body)
+        .digest('hex');
+      
+      if (`sha256=${expectedSignature}` !== signature) {
+        console.error('[Netomi Webhook] Invalid signature');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+    
+    // Extract request ID from payload to match with pending requests
+    const requestId = payload.requestId || payload.id || payload.conversationId;
+    
+    if (requestId && pendingRequests.has(requestId)) {
+      // Resolve the pending promise with the webhook payload
+      const { resolve } = pendingRequests.get(requestId);
+      resolve(payload);
+      pendingRequests.delete(requestId);
+      console.log(`[Netomi Webhook] Resolved pending request: ${requestId}`);
+    }
+    
+    // Store the conversation message for later retrieval
+    const conversationId = payload.conversationId;
+    if (conversationId) {
+      if (!conversations.has(conversationId)) {
+        conversations.set(conversationId, []);
+      }
+      conversations.get(conversationId).push({
+        timestamp: Date.now(),
+        payload: payload,
+        type: 'webhook_response'
+      });
+    }
+    
+    // Acknowledge the webhook
+    res.status(200).json({ 
+      success: true, 
+      message: 'Webhook received successfully',
+      requestId: requestId 
+    });
+    
+  } catch (error) {
+    console.error('[Netomi Webhook] Error processing webhook:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get conversation history
+app.get('/api/conversations/:conversationId', (req, res) => {
+  const { conversationId } = req.params;
+  const messages = conversations.get(conversationId) || [];
+  
+  res.json({
+    ok: true,
+    conversationId,
+    messageCount: messages.length,
+    messages: messages
+  });
+});
+
+// Get all conversations
+app.get('/api/conversations', (req, res) => {
+  const allConversations = {};
+  for (const [id, messages] of conversations.entries()) {
+    allConversations[id] = {
+      messageCount: messages.length,
+      lastActivity: messages.length > 0 ? Math.max(...messages.map(m => m.timestamp)) : null
+    };
+  }
+  
+  res.json({
+    ok: true,
+    conversations: allConversations
+  });
+});
 
 // Test route to call generate-token API
 app.get('/api/netomi/generate-token', async (_req, res) => {
@@ -201,10 +364,10 @@ app.post('/api/netomi/refresh-token', async (req, res) => {
   }
 });
 
-// Test route to call process-message API
+// Test route to call process-message API with webhook support
 app.post('/api/netomi/process-message', async (req, res) => {
   try {
-    const { authToken, messageData } = req.body || {};
+    const { authToken, messageData, waitForWebhook = true, timeoutMs = 30000 } = req.body || {};
     
     if (!authToken) {
       return res.status(400).json({ error: 'Missing `authToken` in request body.' });
@@ -214,44 +377,18 @@ app.post('/api/netomi/process-message', async (req, res) => {
       return res.status(400).json({ error: 'Missing `messageData` in request body.' });
     }
 
-    const data = await processMessage(messageData, authToken);
+    const data = await processMessage(messageData, authToken, waitForWebhook, timeoutMs);
     console.log('[Netomi process message]', data);
+    
+    if (data.webhookResponse) {
+      console.log('[Netomi] Received webhook response with AI payload');
+    } else if (data.error) {
+      console.log('[Netomi] Webhook timeout, only acknowledgment received');
+    }
+    
     return res.status(200).json({ ok: true, data });
   } catch (err) {
     console.error('Process message failed:', err);
-    return res.status(500).json({ ok: false, error: String(err.message || err) });
-  }
-});
-
-// Core route: Send a user message to Netomi
-app.post('/api/netomi/send', async (req, res) => {
-  try {
-    const { userId, sessionId, text, channel = 'web', metadata } = req.body || {};
-
-    if (!text) {
-      return res.status(400).json({ error: 'Missing `text` in request body.' });
-    }
-
-    const payload = {
-      user: { id: userId || sessionId || crypto.randomUUID() },
-      message: {
-        type: 'text',
-        text,
-      },
-      channel,
-      context: {
-        sessionId: sessionId || undefined,
-        workspaceId: CONFIG.WORKSPACE_ID || undefined,
-        botId: CONFIG.BOT_ID || undefined,
-        metadata: metadata || undefined,
-      },
-    };
-
-    const data = await netomiFetch('/v1/messages', { method: 'POST', body: payload });
-
-    return res.status(200).json({ ok: true, data });
-  } catch (err) {
-    console.error('Send failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
@@ -261,6 +398,18 @@ app.get('/', (_req, res) => res.sendFile('index.html', { root: 'public' }));
 
 app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
+// Test endpoint to verify webhook endpoint is accessible
+app.get('/webhook/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Webhook endpoint is accessible',
+    timestamp: new Date().toISOString(),
+    url: `${req.protocol}://${req.get('host')}/webhook/netomi`
+  });
+});
+
 app.listen(CONFIG.PORT, () => {
   console.log(`Netomi Node server listening on http://localhost:${CONFIG.PORT}`);
+  console.log(`Webhook endpoint available at: http://localhost:${CONFIG.PORT}/webhook/netomi`);
+  console.log(`Test webhook accessibility: http://localhost:${CONFIG.PORT}/webhook/test`);
 });

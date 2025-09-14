@@ -231,44 +231,22 @@
                 <input type="checkbox" id="hideMessage" checked>
             </div>
             
+            <div class="form-group">
+                <label for="waitForWebhook">Wait for Webhook Response</label>
+                <input type="checkbox" id="waitForWebhook" checked>
+                <small style="color: #aaa; display: block; margin-top: 5px;">If checked, waits for the AI response via webhook. If unchecked, returns only acknowledgment.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="webhookTimeout">Webhook Timeout (seconds)</label>
+                <input type="number" id="webhookTimeout" value="30" min="5" max="120">
+                <small style="color: #aaa; display: block; margin-top: 5px;">How long to wait for webhook response before timing out.</small>
+            </div>
+            
             <button id="processMessageBtn" onclick="processMessage()">Process Message</button>
             <div id="processMessageResponse" class="response" style="display: none;"></div>
         </div>
 
-        <!-- Send Message API -->
-        <div class="api-section">
-            <h2>4. Send Message</h2>
-            <div class="endpoint-info">POST /api/netomi/send</div>
-            <p style="color: #ccc; margin-bottom: 15px;">Send a user message to Netomi</p>
-            
-            <div class="form-group">
-                <label for="sendMessageText">Message Text *</label>
-                <textarea id="sendMessageText" placeholder="Enter your message here..." required></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="sendUserId">User ID (optional)</label>
-                <input type="text" id="sendUserId" placeholder="Leave empty for auto-generated UUID">
-            </div>
-            
-            <div class="form-group">
-                <label for="sendSessionId">Session ID (optional)</label>
-                <input type="text" id="sendSessionId" placeholder="Leave empty for auto-generated UUID">
-            </div>
-            
-            <div class="form-group">
-                <label for="sendChannel">Channel (optional)</label>
-                <input type="text" id="sendChannel" placeholder="Default: web" value="web">
-            </div>
-            
-            <div class="form-group">
-                <label for="sendMetadata">Metadata (optional JSON)</label>
-                <textarea id="sendMetadata" placeholder='{"key": "value"}'></textarea>
-            </div>
-            
-            <button id="sendMessageBtn" onclick="sendMessage()">Send Message</button>
-            <div id="sendMessageResponse" class="response" style="display: none;"></div>
-        </div>
     </div>
 
     <script>
@@ -279,19 +257,69 @@
             // Basic response info
             html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 10px;">✓ Process Message Response</div>';
             
-            // Check if we have Netomi response data
-            if (data.data && data.data.attachments && data.data.attachments.length > 0) {
+            // Show acknowledgment info
+            if (data.data && data.data.acknowledgment) {
                 html += '<div style="margin-bottom: 15px;">';
-                html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">🤖 Netomi AI Response:</div>';
+                html += '<div style="color: #ffa500; font-weight: bold; margin-bottom: 8px;">📬 Acknowledgment:</div>';
+                html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
+                html += `<div><strong>Status:</strong> Message sent to Netomi</div>`;
+                if (data.data.acknowledgment.requestId) {
+                    html += `<div><strong>Request ID:</strong> ${data.data.acknowledgment.requestId}</div>`;
+                }
+                html += '</div></div>';
+            }
+            
+            // Show webhook response if available
+            if (data.data && data.data.webhookResponse) {
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">🚀 Webhook Response (AI Payload):</div>';
                 
-                data.data.attachments.forEach((attachment, index) => {
-                    if (attachment.type === 'ai.msg.domain.responses.core.MultiSource') {
-                        html += formatMultiSourceAttachment(attachment.attachment);
-                    } else if (attachment.type === 'ai.msg.domain.responses.core.Text') {
-                        html += formatTextAttachment(attachment.attachment);
-                    }
-                });
+                // Check for different response formats
+                const webhook = data.data.webhookResponse;
+                
+                // Check if we have attachments (Netomi AI responses)
+                if (webhook.attachments && webhook.attachments.length > 0) {
+                    webhook.attachments.forEach((attachment, index) => {
+                        if (attachment.type === 'ai.msg.domain.responses.core.MultiSource') {
+                            html += formatMultiSourceAttachment(attachment.attachment);
+                        } else if (attachment.type === 'ai.msg.domain.responses.core.Text') {
+                            html += formatTextAttachment(attachment.attachment);
+                        }
+                    });
+                }
+                
+                // Show message content if available
+                if (webhook.message || webhook.messagePayload) {
+                    const message = webhook.message || webhook.messagePayload;
+                    html += '<div style="background: #0a2f0a; border: 1px solid #00ff88; padding: 10px; border-radius: 4px; margin-bottom: 10px;">';
+                    html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">💬 AI Message:</div>';
+                    html += `<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">${message.text || message.content || JSON.stringify(message)}</div>`;
+                    html += '</div>';
+                }
+                
+                // Show conversation info
+                if (webhook.conversationId) {
+                    html += '<div style="margin-bottom: 15px;">';
+                    html += '<div style="color: #20b2aa; font-weight: bold; margin-bottom: 8px;">💼 Conversation Info:</div>';
+                    html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
+                    html += `<div><strong>Conversation ID:</strong> ${webhook.conversationId}</div>`;
+                    if (webhook.userId) html += `<div><strong>User ID:</strong> ${webhook.userId}</div>`;
+                    if (webhook.botId) html += `<div><strong>Bot ID:</strong> ${webhook.botId}</div>`;
+                    html += '</div></div>';
+                }
+                
                 html += '</div>';
+            } else if (data.data && data.data.error) {
+                // Show timeout/error message
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 8px;">⏰ Webhook Status:</div>';
+                html += '<div style="background: #2f0a0a; border: 1px solid #ff6b6b; padding: 10px; border-radius: 4px;">';
+                html += `<div><strong>Status:</strong> ${data.data.error}</div>`;
+                html += '<div><strong>Note:</strong> Only acknowledgment received. You can check for responses later using the conversation API.</div>';
+                if (data.data.requestId) {
+                    html += `<div><strong>Request ID:</strong> ${data.data.requestId}</div>`;
+                }
+                html += '</div></div>';
             }
             
             // Request info
@@ -511,12 +539,11 @@
             // Build message data from form inputs
             const messageData = {
                 conversationId: conversationId,
-                ownerType: document.getElementById('ownerType').value,
                 messagePayload: {
                     text: messageText,
                     label: "",
                     messageId: document.getElementById('messageId').value.trim() || crypto.randomUUID(),
-                    timestamp: Math.floor(Date.now() / 1000),
+                    timestamp: Date.now(), // Use milliseconds, not seconds
                     hideMessage: document.getElementById('hideMessage').checked
                 },
                 userDetails: {
@@ -560,8 +587,12 @@
                 }
             };
             
+            // Get webhook settings
+            const waitForWebhook = document.getElementById('waitForWebhook').checked;
+            const webhookTimeout = parseInt(document.getElementById('webhookTimeout').value) * 1000; // Convert to milliseconds
+            
             btn.disabled = true;
-            btn.innerHTML = 'Processing Message<span class="loading"></span>';
+            btn.innerHTML = waitForWebhook ? 'Processing Message & Waiting for AI Response<span class="loading"></span>' : 'Processing Message<span class="loading"></span>';
             responseDiv.style.display = 'none';
             
             try {
@@ -572,7 +603,9 @@
                     },
                     body: JSON.stringify({
                         authToken: authToken,
-                        messageData: messageData
+                        messageData: messageData,
+                        waitForWebhook: waitForWebhook,
+                        timeoutMs: webhookTimeout
                     })
                 });
                 
@@ -588,37 +621,6 @@
                     responseDiv.textContent = JSON.stringify(data, null, 2);
                 }
                 
-                // Auto-fill Send Message section if process message was successful
-                if (data.ok && data.data) {
-                    // Fill Send Message fields with data from Process Message form
-                    const processUserId = document.getElementById('userId').value.trim();
-                    const processConversationId = document.getElementById('conversationId').value.trim();
-                    
-                    if (processUserId) {
-                        document.getElementById('sendUserId').value = processUserId;
-                    }
-                    
-                    // Use conversation ID as session ID for Send Message
-                    if (processConversationId) {
-                        document.getElementById('sendSessionId').value = processConversationId;
-                    }
-                    
-                    console.log('Auto-filled Send Message section from Process Message data');
-                    
-                    // Visual indicator for send fields
-                    const sendUserIdField = document.getElementById('sendUserId');
-                    const sendSessionIdField = document.getElementById('sendSessionId');
-                    [sendUserIdField, sendSessionIdField].forEach(field => {
-                        if (field.value) {
-                            field.style.borderColor = '#00ff88';
-                            field.style.boxShadow = '0 0 5px rgba(0, 255, 136, 0.3)';
-                            setTimeout(() => {
-                                field.style.borderColor = '#555';
-                                field.style.boxShadow = 'none';
-                            }, 2000);
-                        }
-                    });
-                }
                 
             } catch (error) {
                 responseDiv.style.display = 'block';
@@ -630,75 +632,7 @@
             }
         }
 
-        // Send Message API Call
-        async function sendMessage() {
-            const btn = document.getElementById('sendMessageBtn');
-            const responseDiv = document.getElementById('sendMessageResponse');
-            
-            const text = document.getElementById('sendMessageText').value.trim();
-            if (!text) {
-                alert('Message text is required!');
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.innerHTML = 'Sending Message<span class="loading"></span>';
-            responseDiv.style.display = 'none';
-            
-            // Prepare request body
-            const requestBody = {
-                text: text
-            };
-            
-            const userId = document.getElementById('sendUserId').value.trim();
-            if (userId) requestBody.userId = userId;
-            
-            const sessionId = document.getElementById('sendSessionId').value.trim();
-            if (sessionId) requestBody.sessionId = sessionId;
-            
-            const channel = document.getElementById('sendChannel').value.trim();
-            if (channel) requestBody.channel = channel;
-            
-            const metadata = document.getElementById('sendMetadata').value.trim();
-            if (metadata) {
-                try {
-                    requestBody.metadata = JSON.parse(metadata);
-                } catch (e) {
-                    alert('Invalid JSON in metadata field!');
-                    btn.disabled = false;
-                    btn.innerHTML = 'Send Message';
-                    return;
-                }
-            }
-            
-            try {
-                const response = await fetch('/api/netomi/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-                
-                const data = await response.json();
-                
-                responseDiv.style.display = 'block';
-                responseDiv.className = 'response ' + (data.ok ? 'success' : 'error');
-                responseDiv.textContent = JSON.stringify(data, null, 2);
-                
-            } catch (error) {
-                responseDiv.style.display = 'block';
-                responseDiv.className = 'response error';
-                responseDiv.textContent = 'Network Error: ' + error.message;
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'Send Message';
-            }
-        }
 
-        // Auto-fill some sample data for testing
-        document.getElementById('sendMessageText').value = 'Hello, this is a test message!';
-        
         // Pre-fill process message form with sample data from curl
         document.getElementById('conversationId').value = '7f4b29a1-c38d-420e-b3c9-94f8fdc112f9';
         document.getElementById('messageText').value = 'How much time do I have to return something ? Where are the stores located';
