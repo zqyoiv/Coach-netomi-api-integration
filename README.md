@@ -13,6 +13,58 @@ This project includes a mobile-first chat interface with interactive test assets
    - Main API testing interface: `http://localhost:3000/`
    - Chat interface with Rexy: `http://localhost:3000/rexy`
 
+## 🌐 Public Access with LocalTunnel
+
+To make your local server accessible from the internet (for webhook testing with Netomi):
+
+### 🚀 Complete Setup Steps:
+
+1. **Install LocalTunnel** (if not already installed):
+   ```bash
+   npm install -g localtunnel
+   ```
+
+2. **Start your HTTP server:**
+   ```bash
+   npm run start
+   # or
+   node server.js
+   ```
+
+3. **In another terminal, start LocalTunnel:**
+   ```bash
+   lt --port 3000 --subdomain rexy-netomi
+   ```
+
+### 🌐 Your Public URLs will be:
+
+- **Main site**: `https://rexy-netomi.loca.lt`
+- **Webhook endpoint**: `https://rexy-netomi.loca.lt/webhook/netomi`
+- **Webhook info**: `https://rexy-netomi.loca.lt/webhook/info`
+
+### 📋 CURL Command for Netomi Team:
+
+```bash
+curl -X POST "https://rexy-netomi.loca.lt/webhook/netomi" -H "Authorization: Bearer netomi-webhook-66f1dca1b5a5442667effe2be71e1ad2cbb3a249602582ba3f283efc2ab1ef42" -H "Content-Type: application/json" -d "{\"test\": \"webhook\"}"
+```
+
+### ⚠️ Important Notes:
+
+1. **Keep the terminal open** - LocalTunnel runs as long as the terminal is active
+2. **First visit** to the URL may show a LocalTunnel landing page - click "Continue"
+3. **Free subdomain** - anyone can use `rexy-netomi` if you're not using it
+4. **HTTP server** works better with LocalTunnel (no SSL certificate issues)
+
+### 🎯 For Netomi Team Configuration:
+
+```
+Webhook URL: https://rexy-netomi.loca.lt/webhook/netomi
+Method: POST
+Authentication: Bearer Token
+Authorization Header: Bearer netomi-webhook-66f1dca1b5a5442667effe2be71e1ad2cbb3a249602582ba3f283efc2ab1ef42
+Content-Type: application/json
+```
+
 ## 🎮 Testing Interactive Features
 
 ### 🎭 Stickers
