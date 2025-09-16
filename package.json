@@ -3,7 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "https": "node https-server.js",
+    "https:dev": "node https-server.js",
+    "ssl:generate": "node generate-ssl.js",
+    "ssl:clean": "node -e \"const fs = require('fs'); if (fs.existsSync('certs')) fs.rmSync('certs', {recursive: true, force: true});\"",
+    "ssl:regenerate": "npm run ssl:clean && npm run ssl:generate",
+    "test:webhook": "node test-webhook.js",
+    "setup:env": "node setup-env.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,6 +21,8 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^17.2.2",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "ngrok": "^5.0.0-beta.2",
+    "node-forge": "^1.3.1"
   }
 }
