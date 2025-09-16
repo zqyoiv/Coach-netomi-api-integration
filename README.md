@@ -68,23 +68,6 @@ Type: show-photos
 Result: Bot sends a stack of 3 rotated photos that you can click to explore
 ```
 
-## ⚠️ Important Notes
-
-- **All commands are case-sensitive** and must be typed exactly as shown
-- **File extensions matter** (.gif for stickers/animations, .png for photos)
-- **Commands work only in the Rexy chat interface** (`/rexy` route)
-- **Images must exist** in the specified directories for commands to work
-
-## 🎯 Quick Test Commands
-
-Copy and paste these into the chat to test each feature:
-
-```
-s-hi
-s-drink
-3d-thinking
-show-photos
-```
 
 ## 🏗️ Project Structure
 
@@ -103,17 +86,3 @@ public/
     ├── test-assets.js  # Testing commands logic
     └── photo.js        # Photo gallery interactions
 ```
-
-## 🎨 Features
-
-- **Mobile-first responsive design**
-- **Real-time chat messaging**
-- **Animated stickers and GIFs**
-- **Fullscreen 3D animations with overlays**
-- **Instagram-style photo gallery with grid view**
-- **Smooth transitions and hover effects**
-- **Touch-friendly interface**
-
----
-
-Enjoy testing the interactive chat features! 🎉
