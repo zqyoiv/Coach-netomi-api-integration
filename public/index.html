@@ -247,6 +247,45 @@
             <div id="processMessageResponse" class="response" style="display: none;"></div>
         </div>
 
+        <!-- Webhook Messages Display -->
+        <div class="api-section">
+            <h2>4. Webhook Messages</h2>
+            <div class="endpoint-info">Real-time webhook messages from Netomi</div>
+            <p style="color: #ccc; margin-bottom: 15px;">This section displays messages received at the /webhook/netomi endpoint in real-time</p>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="autoRefreshWebhook" checked> Auto-refresh webhook messages (every 5 seconds)
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button onclick="refreshWebhookMessages()">Refresh Now</button>
+                <button onclick="clearWebhookMessages()">Clear Messages</button>
+                <button onclick="toggleWebhookInfo()">Show Webhook Info</button>
+            </div>
+            
+            <div id="webhookInfo" class="endpoint-info" style="display: none; margin-bottom: 15px;">
+                <div><strong>Webhook URL:</strong> <span id="webhookUrl">Loading...</span></div>
+                <div><strong>Bearer Token:</strong> <span id="webhookToken">Loading...</span></div>
+                <div><strong>Test Command:</strong> <span id="webhookTestCmd" style="font-size: 11px; word-break: break-all;">Loading...</span></div>
+            </div>
+            
+            <div id="webhookMessagesContainer">
+                <div id="webhookMessages" class="response" style="display: block; min-height: 200px; max-height: 400px;">
+                    <div style="color: #666; text-align: center; padding: 20px;">
+                        📡 Waiting for webhook messages...<br>
+                        <small>Send a message using the Process Message section above to see webhook responses here.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                Last updated: <span id="webhookLastUpdate">Never</span>
+                <span id="webhookStatus" style="margin-left: 10px;">⚪ Idle</span>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -632,6 +671,217 @@
             }
         }
 
+
+        // Webhook Messages Management
+        let webhookRefreshInterval = null;
+        let lastWebhookMessageCount = 0;
+
+        // Store webhook messages in memory for this session
+        let webhookMessages = [];
+
+        // Auto-refresh webhook messages
+        function startWebhookAutoRefresh() {
+            if (document.getElementById('autoRefreshWebhook').checked) {
+                webhookRefreshInterval = setInterval(refreshWebhookMessages, 5000);
+                document.getElementById('webhookStatus').textContent = '🔄 Auto-refreshing';
+                document.getElementById('webhookStatus').style.color = '#00ff88';
+            } else {
+                if (webhookRefreshInterval) {
+                    clearInterval(webhookRefreshInterval);
+                    webhookRefreshInterval = null;
+                }
+                document.getElementById('webhookStatus').textContent = '⚪ Manual';
+                document.getElementById('webhookStatus').style.color = '#666';
+            }
+        }
+
+        // Toggle auto-refresh when checkbox changes
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('autoRefreshWebhook').addEventListener('change', startWebhookAutoRefresh);
+            startWebhookAutoRefresh();
+            loadWebhookInfo();
+        });
+
+        // Load webhook configuration info
+        async function loadWebhookInfo() {
+            try {
+                const response = await fetch('/webhook/info');
+                const data = await response.json();
+                
+                document.getElementById('webhookUrl').textContent = data.webhook_endpoint;
+                document.getElementById('webhookToken').textContent = data.bearer_token;
+                document.getElementById('webhookTestCmd').textContent = data.test_command;
+            } catch (error) {
+                console.error('Failed to load webhook info:', error);
+            }
+        }
+
+        // Toggle webhook info display
+        function toggleWebhookInfo() {
+            const infoDiv = document.getElementById('webhookInfo');
+            const isHidden = infoDiv.style.display === 'none';
+            infoDiv.style.display = isHidden ? 'block' : 'none';
+            
+            const button = event.target;
+            button.textContent = isHidden ? 'Hide Webhook Info' : 'Show Webhook Info';
+        }
+
+        // Refresh webhook messages from server
+        async function refreshWebhookMessages() {
+            try {
+                document.getElementById('webhookStatus').textContent = '🔄 Refreshing...';
+                document.getElementById('webhookStatus').style.color = '#ffa500';
+                
+                // Fetch webhook messages from server
+                const response = await fetch('/api/webhook-messages?limit=50');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayWebhookMessages(data.messages);
+                    document.getElementById('webhookLastUpdate').textContent = new Date().toLocaleTimeString();
+                    document.getElementById('webhookStatus').textContent = document.getElementById('autoRefreshWebhook').checked ? '🔄 Auto-refreshing' : '✅ Updated';
+                    document.getElementById('webhookStatus').style.color = '#00ff88';
+                } else {
+                    throw new Error('Failed to fetch webhook messages');
+                }
+                
+            } catch (error) {
+                console.error('Failed to refresh webhook messages:', error);
+                document.getElementById('webhookStatus').textContent = '❌ Error';
+                document.getElementById('webhookStatus').style.color = '#ff4444';
+                
+                // Fallback to localStorage if server fails
+                const fallbackMessages = getStoredWebhookMessages();
+                displayWebhookMessages(fallbackMessages);
+            }
+        }
+
+        // Display webhook messages in the UI
+        function displayWebhookMessages(messages) {
+            const container = document.getElementById('webhookMessages');
+            
+            if (!messages || messages.length === 0) {
+                container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">📡 No webhook messages received yet.<br><small>Send a message using the Process Message section to see webhook responses here.</small></div>';
+                return;
+            }
+
+            let html = '<div style="font-family: monospace;">';
+            
+            // Sort messages by timestamp (newest first)
+            messages.sort((a, b) => b.timestamp - a.timestamp);
+            
+            messages.forEach((msg, index) => {
+                const date = new Date(msg.timestamp);
+                const timeStr = date.toLocaleTimeString();
+                const dateStr = date.toLocaleDateString();
+                
+                html += `<div style="border-bottom: 1px solid #333; padding: 10px 0; ${index === 0 ? 'border-top: 1px solid #333;' : ''}">`;
+                html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 5px;">📨 Webhook Message #${messages.length - index}</div>`;
+                html += `<div style="color: #666; font-size: 11px; margin-bottom: 8px;">${timeStr} - ${dateStr}</div>`;
+                
+                // Format the webhook payload
+                if (msg.data) {
+                    // Show conversation ID if available
+                    if (msg.data.conversationId) {
+                        html += `<div style="margin-bottom: 5px;"><strong>Conversation ID:</strong> ${msg.data.conversationId}</div>`;
+                    }
+                    
+                    // Show trigger type
+                    if (msg.data.triggerType) {
+                        html += `<div style="margin-bottom: 5px;"><strong>Trigger Type:</strong> ${msg.data.triggerType}</div>`;
+                    }
+                    
+                    // Show message content
+                    if (msg.data.message) {
+                        html += `<div style="background: #0a2f0a; border: 1px solid #00ff88; padding: 8px; border-radius: 4px; margin: 8px 0;">`;
+                        html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 5px;">💬 Message:</div>`;
+                        html += `<div>${typeof msg.data.message === 'string' ? msg.data.message : JSON.stringify(msg.data.message)}</div>`;
+                        html += `</div>`;
+                    }
+                    
+                    // Show test messages
+                    if (msg.data.test) {
+                        html += `<div style="background: #2a2a0a; border: 1px solid #ffa500; padding: 8px; border-radius: 4px; margin: 8px 0;">`;
+                        html += `<div style="color: #ffa500; font-weight: bold;">🧪 Test Message: ${msg.data.test}</div>`;
+                        html += `</div>`;
+                    }
+                }
+                
+                // Collapsible raw data
+                html += `<details style="margin-top: 8px;">`;
+                html += `<summary style="color: #666; cursor: pointer; font-size: 11px;">📋 Raw Data</summary>`;
+                html += `<pre style="background: #0a0a0a; padding: 8px; border-radius: 4px; margin-top: 5px; overflow-x: auto; font-size: 10px;">${JSON.stringify(msg.data, null, 2)}</pre>`;
+                html += `</details>`;
+                
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Store webhook message (called when a webhook is received)
+        function storeWebhookMessage(data) {
+            const message = {
+                timestamp: Date.now(),
+                data: data
+            };
+            
+            // Get existing messages from localStorage
+            let stored = getStoredWebhookMessages();
+            stored.push(message);
+            
+            // Keep only last 50 messages
+            if (stored.length > 50) {
+                stored = stored.slice(-50);
+            }
+            
+            // Store back to localStorage
+            localStorage.setItem('webhookMessages', JSON.stringify(stored));
+            
+            // Update display if auto-refresh is on
+            if (document.getElementById('autoRefreshWebhook').checked) {
+                displayWebhookMessages(stored);
+                document.getElementById('webhookLastUpdate').textContent = new Date().toLocaleTimeString();
+            }
+        }
+
+        // Get stored webhook messages from localStorage
+        function getStoredWebhookMessages() {
+            try {
+                const stored = localStorage.getItem('webhookMessages');
+                return stored ? JSON.parse(stored) : [];
+            } catch (error) {
+                console.error('Failed to parse stored webhook messages:', error);
+                return [];
+            }
+        }
+
+        // Clear webhook messages
+        function clearWebhookMessages() {
+            if (confirm('Are you sure you want to clear all webhook messages?')) {
+                // Clear from localStorage and display
+                localStorage.removeItem('webhookMessages');
+                displayWebhookMessages([]);
+                document.getElementById('webhookLastUpdate').textContent = 'Cleared (localStorage only)';
+                
+                // Note: Server-side messages are not cleared - they will reappear on refresh
+                // In a real implementation, you might want to add a server endpoint to clear messages
+            }
+        }
+
+        // Simulate receiving a webhook message (for testing)
+        function simulateWebhookMessage() {
+            const testMessage = {
+                conversationId: 'test-' + Date.now(),
+                triggerType: 'RESPONSE',
+                message: 'This is a simulated webhook message for testing purposes.',
+                timestamp: new Date().toISOString(),
+                test: true
+            };
+            
+            storeWebhookMessage(testMessage);
+        }
 
         // Pre-fill process message form with sample data from curl
         document.getElementById('conversationId').value = '7f4b29a1-c38d-420e-b3c9-94f8fdc112f9';

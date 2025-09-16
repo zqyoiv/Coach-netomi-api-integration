@@ -337,6 +337,7 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
 // ------------------------------
 const pendingRequests = new Map();
 const conversations = new Map();
+const webhookMessages = []; // Store recent webhook messages for frontend display
 
 // ------------------------------
 // HTTPS Redirect Middleware
@@ -439,6 +440,19 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
         payload: payload,
         type: 'webhook_response'
       });
+    }
+    
+    // Store webhook message for frontend display
+    webhookMessages.push({
+      timestamp: Date.now(),
+      data: payload,
+      headers: req.headers,
+      source: 'webhook_endpoint'
+    });
+    
+    // Keep only last 100 messages in memory
+    if (webhookMessages.length > 100) {
+      webhookMessages.shift();
     }
     
     res.status(200).json({ 
@@ -576,6 +590,19 @@ app.get('/webhook/info', (req, res) => {
       ]
     },
     test_command: `curl -X POST "${protocol}://${req.get('host')}/webhook/netomi" -H "Authorization: Bearer ${CONFIG.WEBHOOK_BEARER_TOKEN}" -H "Content-Type: application/json" -d '{"test": "payload"}'`
+  });
+});
+
+// Get recent webhook messages for frontend display
+app.get('/api/webhook-messages', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const recentMessages = webhookMessages.slice(-limit);
+  
+  res.json({
+    success: true,
+    count: recentMessages.length,
+    total: webhookMessages.length,
+    messages: recentMessages
   });
 });
 
