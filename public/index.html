@@ -765,6 +765,17 @@
                 return;
             }
 
+            // Store the current state of expanded details elements
+            const openDetails = new Set();
+            const existingDetails = container.querySelectorAll('details[open]');
+            existingDetails.forEach((detail, index) => {
+                // Create a unique identifier for each detail element
+                const messageIndex = detail.closest('[data-message-index]')?.getAttribute('data-message-index');
+                if (messageIndex) {
+                    openDetails.add(messageIndex);
+                }
+            });
+
             let html = '<div style="font-family: monospace;">';
             
             // Sort messages by timestamp (newest first)
@@ -774,9 +785,10 @@
                 const date = new Date(msg.timestamp);
                 const timeStr = date.toLocaleTimeString();
                 const dateStr = date.toLocaleDateString();
+                const messageIndex = messages.length - index; // Unique identifier for this message
                 
-                html += `<div style="border-bottom: 1px solid #333; padding: 10px 0; ${index === 0 ? 'border-top: 1px solid #333;' : ''}">`;
-                html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 5px;">📨 Webhook Message #${messages.length - index}</div>`;
+                html += `<div data-message-index="${messageIndex}" style="border-bottom: 1px solid #333; padding: 10px 0; ${index === 0 ? 'border-top: 1px solid #333;' : ''}">`;
+                html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 5px;">📨 Webhook Message #${messageIndex}</div>`;
                 html += `<div style="color: #666; font-size: 11px; margin-bottom: 8px;">${timeStr} - ${dateStr}</div>`;
                 
                 // Format the webhook payload
@@ -791,8 +803,109 @@
                         html += `<div style="margin-bottom: 5px;"><strong>Trigger Type:</strong> ${msg.data.triggerType}</div>`;
                     }
                     
-                    // Show message content
-                    if (msg.data.message) {
+                    // Extract and display AI response text and carousels from Netomi payload
+                    let aiResponseText = null;
+                    let userRequestText = null;
+                    let carouselData = null;
+                    
+                    if (msg.data.attachments && Array.isArray(msg.data.attachments)) {
+                        // Look for AI response in attachments
+                        msg.data.attachments.forEach(attachment => {
+                            if (attachment.attachment && attachment.attachment.attachmentResponseType === "ANSWER_AI_RESPONSE") {
+                                // Text response
+                                if (attachment.attachment.text && attachment.attachment.text.trim() !== "") {
+                                    aiResponseText = attachment.attachment.text;
+                                }
+                                // Carousel response
+                                if (attachment.type === "ai.msg.domain.responses.core.Carousel" && 
+                                    attachment.attachment.elements && 
+                                    attachment.attachment.elements.length > 0) {
+                                    carouselData = attachment.attachment;
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Extract user request text
+                    if (msg.data.requestPayload && msg.data.requestPayload.messagePayload && msg.data.requestPayload.messagePayload.text) {
+                        userRequestText = msg.data.requestPayload.messagePayload.text;
+                    }
+                    
+                    // Display user request (what user asked)
+                    if (userRequestText) {
+                        html += `<div style="background: #1a1a2a; border: 1px solid #4a90e2; padding: 8px; border-radius: 4px; margin: 8px 0;">`;
+                        html += `<div style="color: #4a90e2; font-weight: bold; margin-bottom: 5px;">👤 User Request:</div>`;
+                        html += `<div style="font-style: italic;">"${userRequestText}"</div>`;
+                        html += `</div>`;
+                    }
+                    
+                    // Display AI response prominently
+                    if (aiResponseText) {
+                        html += `<div style="background: #0a2f0a; border: 2px solid #00ff88; padding: 12px; border-radius: 8px; margin: 8px 0; box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);">`;
+                        html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px; font-size: 14px;">🤖 Netomi AI Response:</div>`;
+                        html += `<div style="background: #1a1a1a; padding: 10px; border-radius: 4px; font-size: 14px; line-height: 1.4; color: #ffffff;">"${aiResponseText}"</div>`;
+                        html += `</div>`;
+                    }
+                    
+                    // Display Carousel with Images
+                    if (carouselData) {
+                        html += `<div style="background: #0a2f2f; border: 2px solid #20b2aa; padding: 12px; border-radius: 8px; margin: 8px 0; box-shadow: 0 0 10px rgba(32, 178, 170, 0.2);">`;
+                        html += `<div style="color: #20b2aa; font-weight: bold; margin-bottom: 12px; font-size: 14px;">🛍️ Product Carousel (${carouselData.elements.length} items):</div>`;
+                        
+                        // Carousel container with horizontal scroll
+                        html += `<div style="display: flex; gap: 12px; overflow-x: auto; padding: 8px 0; margin-bottom: 8px;">`;
+                        
+                        carouselData.elements.forEach((element, elementIndex) => {
+                            html += `<div style="flex: none; width: 200px; background: #1a1a1a; border-radius: 8px; overflow: hidden; border: 1px solid #333;">`;
+                            
+                            // Product image
+                            if (element.imageUrl) {
+                                html += `<div style="position: relative; width: 100%; height: 150px; background: #2a2a2a;">`;
+                                html += `<img src="${element.imageUrl}" alt="${element.title || 'Product'}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 0;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`;
+                                html += `<div style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #2a2a2a; align-items: center; justify-content: center; color: #666; font-size: 12px;">📷 Image unavailable</div>`;
+                                html += `</div>`;
+                            }
+                            
+                            // Product details
+                            html += `<div style="padding: 12px;">`;
+                            
+                            // Title
+                            if (element.title) {
+                                html += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 6px; font-size: 13px; line-height: 1.3;">${element.title}</div>`;
+                            }
+                            
+                            // Description
+                            if (element.description && element.description !== element.title) {
+                                html += `<div style="color: #ccc; font-size: 11px; margin-bottom: 8px; line-height: 1.3;">${element.description}</div>`;
+                            }
+                            
+                            // Buttons
+                            if (element.buttons && element.buttons.length > 0) {
+                                element.buttons.forEach(button => {
+                                    if (button.type === "WEB" && button.url) {
+                                        html += `<a href="${button.url}" target="_blank" style="display: inline-block; background: #20b2aa; color: #000; padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: bold; margin-top: 4px; transition: background-color 0.3s;">${button.title || 'View Details'}</a>`;
+                                    }
+                                });
+                            }
+                            
+                            html += `</div>`; // Close product details
+                            html += `</div>`; // Close product card
+                        });
+                        
+                        html += `</div>`; // Close carousel container
+                        
+                        // Carousel info
+                        html += `<div style="font-size: 11px; color: #666; margin-top: 8px;">`;
+                        html += `Aspect Ratio: ${carouselData.carouselImageAspectRatio || 'N/A'} | `;
+                        html += `Items: ${carouselData.elements.length} | `;
+                        html += `Scroll horizontally to see all items`;
+                        html += `</div>`;
+                        
+                        html += `</div>`; // Close carousel container
+                    }
+                    
+                    // Show other message content (fallback)
+                    if (!aiResponseText && msg.data.message) {
                         html += `<div style="background: #0a2f0a; border: 1px solid #00ff88; padding: 8px; border-radius: 4px; margin: 8px 0;">`;
                         html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 5px;">💬 Message:</div>`;
                         html += `<div>${typeof msg.data.message === 'string' ? msg.data.message : JSON.stringify(msg.data.message)}</div>`;
@@ -805,10 +918,23 @@
                         html += `<div style="color: #ffa500; font-weight: bold;">🧪 Test Message: ${msg.data.test}</div>`;
                         html += `</div>`;
                     }
+                    
+                    // Show additional response details
+                    if (msg.data.customFields) {
+                        html += `<div style="margin-top: 8px; font-size: 11px; color: #666;">`;
+                        if (msg.data.customFields.CHUNK_STATUS) {
+                            html += `<span style="margin-right: 10px;">Status: ${msg.data.customFields.CHUNK_STATUS}</span>`;
+                        }
+                        if (msg.data.customFields.TRANSLATE_LANGUAGE) {
+                            html += `<span style="margin-right: 10px;">Language: ${msg.data.customFields.TRANSLATE_LANGUAGE}</span>`;
+                        }
+                        html += `</div>`;
+                    }
                 }
                 
-                // Collapsible raw data
-                html += `<details style="margin-top: 8px;">`;
+                // Collapsible raw data with preserved state
+                const isOpen = openDetails.has(messageIndex.toString());
+                html += `<details ${isOpen ? 'open' : ''} style="margin-top: 8px;">`;
                 html += `<summary style="color: #666; cursor: pointer; font-size: 11px;">📋 Raw Data</summary>`;
                 html += `<pre style="background: #0a0a0a; padding: 8px; border-radius: 4px; margin-top: 5px; overflow-x: auto; font-size: 10px;">${JSON.stringify(msg.data, null, 2)}</pre>`;
                 html += `</details>`;

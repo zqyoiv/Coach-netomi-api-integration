@@ -1,0 +1,178 @@
+{
+  "virtualAgentId": "8d3765b2-551e-4d85-bad6-e63e08d52268",
+  "channelRefId": "3b7c5a5e-81b2-45bd-aa42-3fcb87d77d7b",
+  "timestamp": 1758037951409,
+  "ownerType": "BOT",
+  "channel": "CHAT",
+  "requestId": "a397de9a-18d5-4106-81da-b918ac32437d",
+  "requestPayload": {
+    "conversationId": "7f4b29a1-c38d-420e-b3c9-94f8fdc112f9",
+    "requestId": "a397de9a-18d5-4106-81da-b918ac32437d_res",
+    "integrationChannel": [
+      {
+        "type": "TEXT",
+        "name": "INTEGRATION_CHANNEL",
+        "value": "CHAT_API",
+        "scope": "LIFE_TIME"
+      }
+    ],
+    "messagePayload": {
+      "text": "Could you give me some options?",
+      "messageId": "d1f5a809-f20f-40e1-89cd-e8b9384d0dc7",
+      "label": "",
+      "timestamp": "1758037951398",
+      "hideMessage": true
+    },
+    "userDetails": {
+      "userId": "5113d6d7"
+    },
+    "additionalAttributes": {
+      "CUSTOM_ATTRIBUTES": [
+        {
+          "type": "TEXT",
+          "name": "widget_id",
+          "value": "",
+          "scope": "LIFE_TIME"
+        },
+        {
+          "type": "TEXT",
+          "name": "visitor_url",
+          "value": "https://rexy-netomi.loca.lt/",
+          "scope": "LIFE_TIME"
+        },
+        {
+          "type": "TEXT",
+          "name": "current_user_agent",
+          "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+          "scope": "LIFE_TIME"
+        },
+        {
+          "type": "TEXT",
+          "name": "current_device_type",
+          "value": "desktop",
+          "scope": "LIFE_TIME"
+        },
+        {
+          "type": "TEXT",
+          "name": "current_platform",
+          "value": "Win32",
+          "scope": "LIFE_TIME"
+        }
+      ],
+      "INTEGRATION_CHANNEL": [
+        {
+          "type": "TEXT",
+          "name": "INTEGRATION_CHANNEL",
+          "value": "CHAT_API",
+          "scope": "LIFE_TIME"
+        }
+      ]
+    },
+    "ownerType": "BOT",
+    "eventType": "message",
+    "triggerType": "REQUEST"
+  },
+  "customFields": {
+    "CHUNK_INDEX": "11",
+    "TRANSLATE_LANGUAGE": "en",
+    "CHUNK_STATUS": "SUCCESS",
+    "INPUT_REQUEST_TIME": "1758037951409",
+    "FINAL_CHUNK_TIME": "1758037962587",
+    "FIRST_CHUNK_TIME": "1758037958464"
+  },
+  "attachments": [
+    {
+      "type": "ai.msg.domain.responses.core.Text",
+      "attachment": {
+        "type": "ai.msg.domain.responses.core.Text",
+        "text": "",
+        "timestamp": 1758037951409,
+        "isReviewEnabled": false,
+        "attachmentResponseType": "ANSWER_AI_RESPONSE",
+        "properties": [
+          {
+            "name": "AGGREGATED_CHUNKS_RESPONSE",
+            "value": "true"
+          }
+        ],
+        "id": "2ca1fce7-2acd-400e-b6c9-3b24cfc1d2fa",
+        "isVariationsEnabled": false
+      }
+    },
+    {
+      "type": "ai.msg.domain.responses.core.Text",
+      "attachment": {
+        "type": "ai.msg.domain.responses.core.Text",
+        "text": "Here are some options for women's bags that you might like. You can explore more about each bag by clicking on the links.",
+        "timestamp": 1758037951409,
+        "isReviewEnabled": false,
+        "attachmentResponseType": "ANSWER_AI_RESPONSE",
+        "properties": [
+          {
+            "name": "AGGREGATED_CHUNKS_RESPONSE",
+            "value": "true"
+          }
+        ],
+        "id": "d3e2fa86-4d8e-4249-be6f-56f8e37d0ecf",
+        "isVariationsEnabled": false
+      }
+    },
+    {
+      "type": "ai.msg.domain.responses.core.Carousel",
+      "attachment": {
+        "type": "ai.msg.domain.responses.core.Carousel",
+        "timestamp": 1758037951409,
+        "elements": [
+          {
+            "title": "Soho Bag 25",
+            "imageUrl": "https://coach.scene7.com/is/image/Coach/can44_b4ha_a0",
+            "buttons": [
+              {
+                "type": "WEB",
+                "url": "https://www.coach.com/products/CAN44.html",
+                "title": "View Details",
+                "messenger_extensions": false
+              }
+            ],
+            "description": "Soho Bag 25"
+          },
+          {
+            "title": "Harmony Hobo In Colorblock",
+            "imageUrl": "https://coach.scene7.com/is/image/Coach/53353_b4ax2_a0",
+            "buttons": [
+              {
+                "type": "WEB",
+                "url": "https://www.coach.com/products/53353.html",
+                "title": "View Details",
+                "messenger_extensions": false
+              }
+            ],
+            "description": "Harmony Hobo In Colorblock"
+          }
+        ],
+        "carouselImageAspectRatio": "HORIZONTAL",
+        "isReviewEnabled": false,
+        "attachmentResponseType": "ANSWER_AI_RESPONSE",
+        "properties": [
+          {
+            "name": "AGGREGATED_CHUNKS_RESPONSE",
+            "value": "true"
+          }
+        ]
+      }
+    },
+    {
+      "type": "ai.msg.domain.responses.core.Text",
+      "attachment": {
+        "type": "ai.msg.domain.responses.core.Text",
+        "text": "",
+        "timestamp": 1758037951409,
+        "isReviewEnabled": false,
+        "attachmentResponseType": "INTENT_RESPONSE",
+        "tooltip": "Rephrased query : Could you give me some options?\n",
+        "isVariationsEnabled": false
+      }
+    }
+  ],
+  "triggerType": "RESPONSE"
+}
