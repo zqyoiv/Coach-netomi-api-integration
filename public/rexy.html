@@ -8,11 +8,13 @@
     <link rel="stylesheet" href="css/message.css">
     <link rel="stylesheet" href="css/photo.css">
     <link rel="stylesheet" href="css/camera.css">
+    <link rel="stylesheet" href="css/debug-panel.css">
     <script src="js/viewport.js"></script>
     <script src="js/preloader.js"></script>
     <script src="js/test-assets.js"></script>
     <script src="js/photo.js"></script>
     <script src="js/rexy.js"></script>
+    <script src="js/netomi-integration.js"></script>
     <script src="js/debug-panel.js"></script>
 </head>
 <body>
@@ -36,61 +38,8 @@
             </div>
         </div>
 
-        <!-- Debug Panel -->
-        <div class="debug-panel" id="debugPanel" style="display: none;">
-            <div class="debug-panel-content">
-                <div class="debug-header">
-                    <h3>🛠️ Debug Panel</h3>
-                    <button class="debug-close" id="debugClose">×</button>
-                </div>
-                <div class="debug-body">
-                    <div class="debug-section">
-                        <div class="debug-toggle-group">
-                            <label class="debug-toggle">
-                                <input type="checkbox" id="netomiToggle" checked>
-                                <span class="debug-slider"></span>
-                                <span class="debug-label">Netomi Integration</span>
-                            </label>
-                            <div class="debug-status" id="netomiStatus">
-                                <span class="status-indicator active"></span>
-                                <span class="status-text">Active</span>
-                            </div>
-                        </div>
-                        <div class="debug-description">
-                            When enabled, chat messages are sent to Netomi API for AI responses. 
-                            When disabled, uses hardcoded/fake responses for testing.
-                        </div>
-                    </div>
-                    
-                    <div class="debug-section">
-                        <h4>System Info</h4>
-                        <div class="debug-info">
-                            <div class="info-row">
-                                <span class="info-label">Mode:</span>
-                                <span class="info-value" id="debugMode">Production</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Endpoint:</span>
-                                <span class="info-value" id="debugEndpoint">Netomi API</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Status:</span>
-                                <span class="info-value" id="debugConnectionStatus">Connected</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="debug-section">
-                        <h4>Test Actions</h4>
-                        <div class="debug-actions">
-                            <button class="debug-action-button" id="testNetomiConnection">Test Netomi Connection</button>
-                            <button class="debug-action-button" id="clearChatHistory">Clear Chat History</button>
-                            <button class="debug-action-button" id="resetDebugSettings">Reset Settings</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Debug Panel Container (dynamically loaded) -->
+        <div id="debugPanelContainer"></div>
 
         <!-- Chat Messages Area -->
         <div class="chat-messages">
