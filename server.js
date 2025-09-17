@@ -7,8 +7,18 @@
 import 'dotenv/config';
 import express from 'express';
 import crypto from 'crypto';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static('public'));
 
@@ -230,6 +240,7 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
 const pendingRequests = new Map(); // requestId -> { resolve, reject, timestamp }
 const conversations = new Map(); // conversationId -> messages array
 const webhookMessages = []; // Store recent webhook messages for frontend display
+const connectedClients = new Map(); // Store Socket.IO clients with their auth tokens
 
 // ------------------------------
 // Routes
@@ -279,7 +290,8 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
       return res.status(400).json({ error: 'Invalid JSON payload' });
     }
     
-    console.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
+    console.log('[Netomi Webhook] Payload response received.');
+    // console.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
     
     // Optional: Additional signature verification (if Netomi provides it)
     if (CONFIG.WEBHOOK_SECRET) {
@@ -324,17 +336,22 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     }
     
     // Store webhook message for frontend display
-    webhookMessages.push({
+    const webhookMessage = {
       timestamp: Date.now(),
       data: payload,
       headers: req.headers,
       source: 'webhook_endpoint'
-    });
+    };
+    
+    webhookMessages.push(webhookMessage);
     
     // Keep only last 100 messages in memory
     if (webhookMessages.length > 100) {
       webhookMessages.shift();
     }
+    
+    // Broadcast to connected SSE clients
+    broadcastWebhookUpdate(webhookMessage);
     
     // Acknowledge the webhook
     res.status(200).json({ 
@@ -424,13 +441,13 @@ app.post('/api/netomi/process-message', async (req, res) => {
     const data = await processMessage(messageData, authToken, waitForWebhook, timeoutMs);
     console.log('[Netomi process message]', data);
     
-    if (data.webhookResponse) {
+    if (data && data.webhookResponse) {
       console.log('[Netomi] Received webhook response with AI payload');
-    } else if (data.error) {
+    } else if (data && data.error) {
       console.log('[Netomi] Webhook timeout, only acknowledgment received');
     }
     
-    return res.status(200).json({ ok: true, data });
+    return res.status(200).json({ ok: true, data: data ?? {} });
   } catch (err) {
     console.error('Process message failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
@@ -489,8 +506,84 @@ app.get('/api/webhook-messages', (req, res) => {
   });
 });
 
-app.listen(CONFIG.PORT, () => {
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log(`[Socket.IO] Client connected: ${socket.id}`);
+  
+  // Store unauthenticated client initially
+  connectedClients.set(socket.id, {
+    socket,
+    authToken: null,
+    authenticated: false,
+    connectedAt: Date.now()
+  });
+  
+  // Send initial connection confirmation
+  socket.emit('connected', {
+    success: true,
+    message: 'Socket.IO connection established',
+    clientId: socket.id
+  });
+  
+  // Handle client authentication (when they have a token)
+  socket.on('authenticate', (data) => {
+    const { authToken, clientInfo } = data;
+    console.log(`[Socket.IO] Client ${socket.id} authenticating with token`);
+    
+    // Update client with auth info
+    connectedClients.set(socket.id, {
+      socket,
+      authToken,
+      clientInfo,
+      authenticated: true,
+      connectedAt: Date.now()
+    });
+    
+    // Send confirmation
+    socket.emit('authenticated', {
+      success: true,
+      message: 'Socket.IO connection authenticated',
+      clientId: socket.id
+    });
+  });
+  
+  // Handle client disconnect
+  socket.on('disconnect', (reason) => {
+    console.log(`[Socket.IO] Client disconnected: ${socket.id}, reason: ${reason}`);
+    connectedClients.delete(socket.id);
+  });
+  
+  // Handle ping for connection testing
+  socket.on('ping', () => {
+    socket.emit('pong', { timestamp: Date.now() });
+  });
+});
+
+// Function to broadcast webhook updates to all connected Socket.IO clients
+function broadcastWebhookUpdate(webhookMessage) {
+  const eventData = {
+    type: 'webhook_update',
+    message: webhookMessage,
+    timestamp: Date.now()
+  };
+
+  console.log(`[Socket.IO] Broadcasting to ${connectedClients.size} connected clients`);
+
+  // Send to all authenticated clients
+  connectedClients.forEach((client, clientId) => {
+    try {
+      client.socket.emit('webhook_update', eventData);
+    } catch (error) {
+      console.error(`[Socket.IO] Failed to send to client ${clientId}:`, error);
+      // Remove dead connection
+      connectedClients.delete(clientId);
+    }
+  });
+}
+
+httpServer.listen(CONFIG.PORT, () => {
   console.log(`🌐 Netomi HTTP Server listening on http://localhost:${CONFIG.PORT}`);
+  console.log(`🔌 Socket.IO enabled for real-time communication`);
   console.log(`🔗 Webhook endpoint: http://localhost:${CONFIG.PORT}/webhook/netomi`);
   console.log(`🧪 Test webhook: http://localhost:${CONFIG.PORT}/webhook/test`);
   console.log(`📋 Webhook info: http://localhost:${CONFIG.PORT}/webhook/info`);

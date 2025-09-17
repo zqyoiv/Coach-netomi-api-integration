@@ -2,6 +2,66 @@
 let isNetomiEnabled = true;
 let debugPanelLoaded = false;
 
+// Global state management for Rexy integration
+window.RexyGlobalState = {
+    listeners: [],
+    authToken: null,
+    
+    setNetomiEnabled(enabled) {
+        const oldValue = isNetomiEnabled;
+        isNetomiEnabled = enabled;
+        
+        // Save to localStorage
+        localStorage.setItem('netomiEnabled', enabled.toString());
+        
+        // Update debug panel UI
+        updateDebugStatus();
+        
+        // Notify all listeners if value changed
+        if (oldValue !== enabled) {
+            console.log(`[GlobalState] Netomi integration ${enabled ? 'ENABLED' : 'DISABLED'}`);
+            this.listeners.forEach(listener => {
+                try {
+                    listener(enabled);
+                } catch (error) {
+                    console.error('[GlobalState] Listener error:', error);
+                }
+            });
+        }
+    },
+    
+    isNetomiEnabled() {
+        return isNetomiEnabled;
+    },
+    
+    setAuthToken(token) {
+        this.authToken = token;
+        console.log(`[GlobalState] Auth token ${token ? 'stored' : 'cleared'}`);
+    },
+    
+    getAuthToken() {
+        return this.authToken;
+    },
+    
+    addListener(callback) {
+        this.listeners.push(callback);
+        console.log(`[GlobalState] Added listener, total: ${this.listeners.length}`);
+    },
+    
+    initialize() {
+        console.log('[GlobalState] Initialized');
+        // Load saved state
+        const savedState = localStorage.getItem('netomiEnabled');
+        if (savedState !== null) {
+            isNetomiEnabled = savedState === 'true';
+        }
+    }
+};
+
+// Initialize global state immediately
+window.RexyGlobalState.initialize();
+console.log('[DebugPanel] ✅ RexyGlobalState initialized and available globally');
+
 // Load debug panel HTML
 async function loadDebugPanel() {
     if (debugPanelLoaded) return;
@@ -57,13 +117,11 @@ function initializeDebugPanelEvents() {
     
     // Netomi toggle
     netomiToggle.addEventListener('change', function() {
-        isNetomiEnabled = this.checked;
-        localStorage.setItem('netomiEnabled', isNetomiEnabled.toString());
-        updateDebugStatus();
+        window.RexyGlobalState.setNetomiEnabled(this.checked);
         updateDebugInfo();
         
         // Generate token when enabling Netomi
-        if (isNetomiEnabled && window.NetomiIntegration) {
+        if (this.checked && window.NetomiIntegration) {
             console.log('[Debug] Netomi enabled, generating token...');
             window.NetomiIntegration.generateToken().catch(error => {
                 console.warn('[Debug] Auto token generation failed:', error);

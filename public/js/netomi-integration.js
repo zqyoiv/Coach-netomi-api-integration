@@ -1,8 +1,9 @@
 // Netomi Integration Functions
 // Handles authentication token generation and API communication
 
-let netomiToken = null;
-let tokenExpiresAt = null;
+// Store tokens in window object for global access
+window.netomiAuthToken = null;
+window.netomiTokenExpiry = null;
 
 /**
  * Generate a new Netomi authentication token
@@ -15,28 +16,51 @@ async function generateNetomiToken() {
         const response = await fetch('/api/netomi/generate-token');
         const result = await response.json();
         
+        console.log('[Netomi] Raw server response:', result);
+        
         if (!response.ok) {
             throw new Error(result.error || `HTTP ${response.status}`);
         }
         
         if (result.ok && result.data) {
-            netomiToken = result.data.token || result.data.access_token;
+            console.log('[Netomi] Token data structure:', result.data);
+            // Store token in window object (same pattern as index.html)
+            // Extract token from payload structure like index.html does
+            const extractedToken = result.data.payload && result.data.payload.token;
+            console.log('[Netomi] Extracted token:', extractedToken);
+            window.netomiAuthToken = extractedToken;
             
-            // Calculate expiration time if provided
-            if (result.data.expires_in) {
-                tokenExpiresAt = Date.now() + (result.data.expires_in * 1000);
+            // Calculate expiration time if provided (check payload structure)
+            if (result.data.payload && result.data.payload.expires_in) {
+                window.netomiTokenExpiry = Date.now() + (result.data.payload.expires_in * 1000);
+            } else if (result.data.payload && result.data.payload.expiresIn) {
+                window.netomiTokenExpiry = Date.now() + (result.data.payload.expiresIn * 1000);
+            } else if (result.data.expires_in) {
+                window.netomiTokenExpiry = Date.now() + (result.data.expires_in * 1000);
             } else if (result.data.expiresIn) {
-                tokenExpiresAt = Date.now() + (result.data.expiresIn * 1000);
+                window.netomiTokenExpiry = Date.now() + (result.data.expiresIn * 1000);
             }
             
-            console.log('[Netomi] Token generated successfully');
-            console.log('[Netomi] Token:', netomiToken ? `${netomiToken.substring(0, 20)}...` : 'None');
-            console.log('[Netomi] Expires at:', tokenExpiresAt ? new Date(tokenExpiresAt).toISOString() : 'Unknown');
-            
-            // Update debug panel if available
-            updateTokenDisplay(result.data);
-            
-            return result.data;
+        console.log('[Netomi] Token stored in window object');
+        console.log('[Netomi] Token:', window.netomiAuthToken ? `${window.netomiAuthToken.substring(0, 20)}...` : 'None');
+        console.log('[Netomi] Expires at:', window.netomiTokenExpiry ? new Date(window.netomiTokenExpiry).toISOString() : 'Unknown');
+        
+        // Re-authenticate existing Socket.IO connection with new token
+        if (window.netomiSocket && window.netomiSocket.connected) {
+            window.netomiSocket.emit('authenticate', {
+                authToken: window.netomiAuthToken,
+                clientInfo: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    page: 'rexy-chat'
+                }
+            });
+        }
+        
+        // Update debug panel if available
+        updateTokenDisplay(result.data);
+        
+        return result.data.payload || result.data;
         } else {
             throw new Error('Invalid response format from token endpoint');
         }
@@ -55,9 +79,9 @@ async function generateNetomiToken() {
  * @returns {boolean} True if token is valid and not expired
  */
 function isTokenValid() {
-    if (!netomiToken) return false;
-    if (!tokenExpiresAt) return true; // Assume valid if no expiration
-    return Date.now() < tokenExpiresAt;
+    if (!window.netomiAuthToken) return false;
+    if (!window.netomiTokenExpiry) return true; // Assume valid if no expiration
+    return Date.now() < window.netomiTokenExpiry;
 }
 
 /**
@@ -66,13 +90,13 @@ function isTokenValid() {
  */
 async function getValidToken() {
     if (isTokenValid()) {
-        console.log('[Netomi] Using existing valid token');
-        return netomiToken;
+        console.log('[Netomi] Using existing valid token from window');
+        return window.netomiAuthToken;
     }
     
     console.log('[Netomi] Token expired or missing, generating new one...');
     const tokenData = await generateNetomiToken();
-    return tokenData.token || tokenData.access_token;
+    return window.netomiAuthToken; // Return from window after generation
 }
 
 /**
@@ -114,9 +138,9 @@ function updateTokenDisplay(tokenData, error) {
             tokenDisplay.className = 'info-value';
         }
         if (tokenExpiry) {
-            if (tokenExpiresAt) {
-                const expiryDate = new Date(tokenExpiresAt);
-                const timeLeft = Math.round((tokenExpiresAt - Date.now()) / 1000 / 60); // minutes
+            if (window.netomiTokenExpiry) {
+                const expiryDate = new Date(window.netomiTokenExpiry);
+                const timeLeft = Math.round((window.netomiTokenExpiry - Date.now()) / 1000 / 60); // minutes
                 tokenExpiry.textContent = `${timeLeft}m (${expiryDate.toLocaleTimeString()})`;
             } else {
                 tokenExpiry.textContent = 'No expiration';
@@ -126,44 +150,109 @@ function updateTokenDisplay(tokenData, error) {
 }
 
 /**
- * Send a message to Netomi API
+ * Send a message to Netomi API (following index.html pattern exactly)
  * @param {string} message - User message
  * @param {Object} options - Additional options (conversationId, etc.)
  * @returns {Promise<Object>} Netomi API response
  */
 async function sendToNetomi(message, options = {}) {
+    // Always read token from window (same as index.html pattern)
+    const authToken = window.netomiAuthToken;
+    if (!authToken) {
+        throw new Error('No auth token available. Please generate a token first.');
+    }
+    
+    // Format message data EXACTLY like index.html (copied structure)
+    const conversationId = options.conversationId || `chat-${Date.now()}`;
+    const userId = "rexy-chat-user";
+    
+    const messageData = {
+        conversationId: conversationId,
+        messagePayload: {
+            text: message,
+            label: "",
+            messageId: options.messageId || self.crypto.randomUUID(),
+            timestamp: Date.now(),
+            hideMessage: false
+        },
+        userDetails: {
+            userId: userId
+        },
+        origin: options.origin || "rexy-chat",
+        eventType: "message",
+        additionalAttributes: {
+            CUSTOM_ATTRIBUTES: [
+                {
+                    type: "TEXT",
+                    name: "widget_id",
+                    value: "",
+                    scope: "LIFE_TIME"
+                },
+                {
+                    type: "TEXT",
+                    name: "visitor_url",
+                    value: window.location.href,
+                    scope: "LIFE_TIME"
+                },
+                {
+                    type: "TEXT",
+                    name: "current_user_agent",
+                    value: navigator.userAgent,
+                    scope: "LIFE_TIME"
+                },
+                {
+                    type: "TEXT",
+                    name: "current_device_type",
+                    value: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? "mobile" : "desktop",
+                    scope: "LIFE_TIME"
+                },
+                {
+                    type: "TEXT",
+                    name: "current_platform",
+                    value: navigator.platform,
+                    scope: "LIFE_TIME"
+                }
+            ]
+        }
+    };
+    
+    console.log('[Netomi] Sending message:', message);
+    console.log('[Netomi] Using auth token from window.netomiAuthToken');
+    
     try {
-        const token = await getValidToken();
-        
-        const payload = {
-            message: message,
-            conversationId: options.conversationId || `chat-${Date.now()}`,
-            ...options
-        };
-        
-        console.log('[Netomi] Sending message:', message);
-        
-        const response = await fetch('/api/netomi/chat', {
+        const response = await fetch('/api/netomi/process-message', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                authToken: authToken,
+                messageData: messageData,
+                waitForWebhook: true,
+                timeoutMs: 30000
+            })
         });
         
-        const result = await response.json();
+        // Parse JSON safely
+        let result;
+        try {
+            result = await response.json();
+        } catch (e) {
+            result = { ok: false, error: 'Invalid JSON from server', raw: null };
+        }
         
         if (!response.ok) {
-            throw new Error(result.error || `HTTP ${response.status}`);
+            const errMsg = (result && result.error) ? result.error : `HTTP ${response.status}`;
+            console.warn('[Netomi] Non-OK response:', errMsg);
+            return { ok: false, error: errMsg, status: response.status };
         }
         
         console.log('[Netomi] Response received:', result);
         return result;
         
     } catch (error) {
-        console.error('[Netomi] Chat request failed:', error);
-        throw error;
+        console.error('[Netomi] Request failed:', error);
+        return { ok: false, error: error?.message || String(error) };
     }
 }
 
@@ -188,22 +277,170 @@ async function testNetomiConnection() {
     }
 }
 
+/**
+ * Extract AI response text from Netomi webhook response (matching index.html logic)
+ * @param {Object} webhookResponse - The webhook response from Netomi
+ * @returns {string|null} Extracted AI text or null if not found
+ */
+function extractAIResponseText(webhookResponse) {
+    try {
+        if (!webhookResponse) return null;
+        
+        console.log('[Netomi] Extracting AI text from webhook response:', webhookResponse);
+        
+        // Check for attachments (Netomi AI responses) - same as index.html
+        if (webhookResponse.attachments && Array.isArray(webhookResponse.attachments)) {
+            for (const attachment of webhookResponse.attachments) {
+                // Look for Text attachments with actual text content
+                if (attachment.type === 'ai.msg.domain.responses.core.Text' && 
+                    attachment.attachment && 
+                    attachment.attachment.text &&
+                    attachment.attachment.text.trim() !== '') {
+                    
+                    console.log('[Netomi] Found AI text:', attachment.attachment.text);
+                    return attachment.attachment.text;
+                }
+            }
+        }
+        
+        // Check for message content (fallback)
+        if (webhookResponse.message || webhookResponse.messagePayload) {
+            const message = webhookResponse.message || webhookResponse.messagePayload;
+            if (message.text && message.text.trim() !== '') {
+                return message.text;
+            }
+        }
+        
+        console.log('[Netomi] No AI text found in webhook response attachments');
+        return null;
+    } catch (error) {
+        console.error('[Netomi] Error extracting AI text:', error);
+        return null;
+    }
+}
+
+/**
+ * Extract carousel data from Netomi webhook response
+ * @param {Object} webhookResponse - The webhook response from Netomi
+ * @returns {Object|null} Carousel data or null if not found
+ */
+function extractCarouselData(webhookResponse) {
+    try {
+        if (!webhookResponse || !webhookResponse.attachments) return null;
+        
+        const carouselAttachment = webhookResponse.attachments.find(att => 
+            att.type === 'template' && att.payload && att.payload.template_type === 'generic'
+        );
+        
+        if (carouselAttachment && carouselAttachment.payload.elements) {
+            return {
+                elements: carouselAttachment.payload.elements.map(element => ({
+                    imageUrl: element.image_url,
+                    title: element.title,
+                    subtitle: element.subtitle,
+                    buttons: element.buttons ? element.buttons.map(btn => ({
+                        title: btn.title,
+                        url: btn.url,
+                        type: btn.type
+                    })) : []
+                }))
+            };
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('[Netomi] Error extracting carousel data:', error);
+        return null;
+    }
+}
+
+/**
+ * Initialize Socket.IO connection for real-time updates
+ */
+function initializeSocketConnection() {
+    // Don't reconnect if already connected
+    if (window.netomiSocket && window.netomiSocket.connected) {
+        console.log('[Netomi] Socket.IO already connected');
+        return;
+    }
+    
+    console.log('[Netomi] Initializing Socket.IO connection...');
+    
+    // Create Socket.IO connection
+    window.netomiSocket = io();
+    
+    window.netomiSocket.on('connect', () => {
+        console.log(`[Netomi] Socket.IO connected: ${window.netomiSocket.id}`);
+        
+        // Authenticate with the server if we have a token
+        if (window.netomiAuthToken) {
+            console.log('[Netomi] Authenticating with existing token...');
+            window.netomiSocket.emit('authenticate', {
+                authToken: window.netomiAuthToken,
+                clientInfo: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    page: 'rexy-chat'
+                }
+            });
+        } else {
+            console.log('[Netomi] Connected but no token yet - will authenticate when token is generated');
+        }
+    });
+    
+    window.netomiSocket.on('connected', (data) => {
+        console.log('[Netomi] Socket.IO initial connection confirmed:', data);
+    });
+    
+    window.netomiSocket.on('authenticated', (data) => {
+        console.log('[Netomi] Socket.IO authenticated:', data);
+    });
+    
+    window.netomiSocket.on('webhook_update', (data) => {
+        console.log('[Netomi] Received webhook update via Socket.IO:', data);
+        
+        if (data.message && data.message.data) {
+            // Notify the chat interface about the new webhook
+            if (window.handleRealtimeWebhookUpdate) {
+                window.handleRealtimeWebhookUpdate(data.message.data);
+            }
+        }
+    });
+    
+    window.netomiSocket.on('disconnect', (reason) => {
+        console.log(`[Netomi] Socket.IO disconnected: ${reason}`);
+    });
+    
+    window.netomiSocket.on('connect_error', (error) => {
+        console.error('[Netomi] Socket.IO connection error:', error);
+    });
+}
+
 // Export functions for use in other scripts
 window.NetomiIntegration = {
     generateToken: generateNetomiToken,
-    getValidToken,
-    isTokenValid,
     sendToNetomi,
     testConnection: testNetomiConnection,
-    getCurrentToken: () => netomiToken,
-    getTokenExpiry: () => tokenExpiresAt
+    getCurrentToken: () => window.netomiAuthToken,
+    getTokenExpiry: () => window.netomiTokenExpiry,
+    extractAIResponseText,
+    extractCarouselData,
+    initializeSocketConnection
 };
 
-// Auto-generate token when Netomi is enabled (if debug panel is available)
+console.log('[NetomiIntegration] ✅ Object initialized and available globally');
+
+// Initialize Socket.IO connection IMMEDIATELY when script loads (before DOM ready)
+console.log('[Netomi] Initializing Socket.IO connection immediately...');
+initializeSocketConnection();
+
+// Auto-generate token when DOM is ready and debug panel is available
 document.addEventListener('DOMContentLoaded', function() {
-    // Wait a bit for debug panel to initialize
+    console.log('[Netomi] DOM loaded, checking for auto-token generation...');
+    
+    // Wait a bit for debug panel to initialize, then auto-generate token
     setTimeout(() => {
-        if (window.isNetomiEnabled && window.isNetomiEnabled()) {
+        if (window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled()) {
             console.log('[Netomi] Auto-generating token on page load...');
             generateNetomiToken().catch(error => {
                 console.warn('[Netomi] Auto token generation failed:', error);

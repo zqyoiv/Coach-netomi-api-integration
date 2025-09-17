@@ -1,8 +1,37 @@
 // Chat functionality for Rexy interface
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Rexy] DOM loaded, checking dependencies...');
+    console.log('[Rexy] window.RexyGlobalState:', !!window.RexyGlobalState);
+    console.log('[Rexy] window.NetomiIntegration:', !!window.NetomiIntegration);
+    
     const chatInput = document.querySelector('.chat-input');
     const sendButton = document.querySelector('.send-button');
     const chatMessages = document.querySelector('.chat-messages');
+    
+    // Wait for dependencies to load if they're not ready yet
+    function waitForDependencies() {
+        if (!window.RexyGlobalState || !window.NetomiIntegration) {
+            console.log('[Rexy] Dependencies not ready, waiting 100ms...');
+            setTimeout(waitForDependencies, 100);
+            return;
+        }
+        
+        console.log('[Rexy] ✅ All dependencies loaded, initializing...');
+        initializeChat();
+    }
+    
+    // Start waiting for dependencies
+    waitForDependencies();
+    
+    function initializeChat() {
+        console.log('[Rexy] 🚀 Initializing chat with dependencies loaded');
+        
+        // Listen for Netomi state changes from debug panel
+        if (window.RexyGlobalState) {
+            window.RexyGlobalState.addListener(function(netomiEnabled) {
+                console.log(`[Rexy] Received state change notification: Netomi ${netomiEnabled ? 'ENABLED' : 'DISABLED'}`);
+            });
+        }
     
     // Function to add a message to the chat
     function addMessage(text, isUser = true, isSticker = false) {
@@ -160,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
     // Function to send message
-    function sendMessage() {
+    async function sendMessage() {
         const text = chatInput.value.trim();
         
         // Check for test commands first
@@ -208,13 +237,205 @@ document.addEventListener('DOMContentLoaded', function() {
             chatInput.value = '';
             chatInput.style.height = 'auto';
             
-            // Simple bot response for text messages (only if no images were sent)
+            // Handle text message responses (only if no images were sent)
             if (text && (!selectedImages || selectedImages.length === 0)) {
-                setTimeout(() => {
-                    addMessage("Thanks for your message! How else can I help you with Coach products?", false);
-                }, 1000);
+                // Check if Netomi integration is enabled
+                const isNetomiEnabled = window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled();
+                
+                console.log(`[Rexy] Netomi integration status: ${isNetomiEnabled ? 'ENABLED' : 'DISABLED'}`);
+                
+                if (isNetomiEnabled && window.NetomiIntegration) {
+                    // Send to Netomi API
+                    console.log('[Rexy] Sending message to Netomi API');
+                    try {
+                        await handleNetomiMessage(text);
+                    } catch (error) {
+                        console.error('[Rexy] Error sending to Netomi:', error);
+                        // Fallback to mock response on error
+                        addMessage("I'm having trouble connecting right now. Please try again later.", false);
+                    }
+                } else {
+                    // Use mock response
+                    console.log('[Rexy] Using mock response');
+                    setTimeout(() => {
+                        addMessage("Thanks for your message! How else can I help you with Coach products?", false);
+                    }, 1000);
+                }
             }
         }
+    }
+    
+    // Handle Netomi message processing
+    async function handleNetomiMessage(message) {
+        try {
+            // Show typing indicator
+            addTypingIndicator();
+            
+            console.log('[Rexy] Sending message to Netomi:', message);
+            
+            // Send message to Netomi
+            const response = await window.NetomiIntegration.sendToNetomi(message);
+            
+            console.log('[Rexy] Received response from Netomi:', response);
+            
+            if (response && response.ok && response.data) {
+                if (response.data.webhookResponse) {
+                    // Webhook response received immediately - process it
+                    const webhookResponse = response.data.webhookResponse;
+                    
+                    console.log('[Rexy] Processing immediate webhook response:', webhookResponse);
+                    
+                    // Remove typing indicator first
+                    removeTypingIndicator();
+                    
+                    // Extract AI response text
+                    const aiText = window.NetomiIntegration.extractAIResponseText ? 
+                                  window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
+                    
+                    if (aiText) {
+                        addMessage(aiText, false);
+                        
+                        // Extract and display carousel if available
+                        const carouselData = window.NetomiIntegration.extractCarouselData ? 
+                                           window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
+                        
+                        if (carouselData) {
+                            addCarouselMessage(carouselData);
+                        }
+                    } else {
+                        console.log('[Rexy] No AI text found, showing fallback message');
+                        addMessage("I received your message but couldn't generate a response. Please try again.", false);
+                    }
+                } else {
+                    // Acknowledgment only - webhook will come via Socket.IO
+                    console.log('[Rexy] Message sent successfully, waiting for webhook response via Socket.IO...');
+                    // Keep typing indicator - it will be removed when Socket.IO message arrives
+                }
+            } else {
+                // Handle error case
+                removeTypingIndicator();
+                const errMsg = response && response.error ? response.error : 'Network or server error';
+                console.warn('[Rexy] Netomi response not OK:', errMsg);
+                addMessage("I'm having trouble connecting right now. Please try again later.", false);
+            }
+            
+        } catch (error) {
+            console.error('[Rexy] Netomi message failed:', error);
+            removeTypingIndicator();
+            addMessage("I'm having trouble connecting right now. Please try again later.", false);
+        }
+    }
+    
+    // Add typing indicator
+    function addTypingIndicator() {
+        // Remove existing typing indicator if any
+        removeTypingIndicator();
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message typing-message';
+        messageDiv.id = 'typingIndicator';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble bot-bubble typing-bubble';
+        messageBubble.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
+        
+        messageContent.appendChild(messageBubble);
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Remove typing indicator
+    function removeTypingIndicator() {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    // Add carousel message
+    function addCarouselMessage(carouselData) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const carouselContainer = document.createElement('div');
+        carouselContainer.className = 'carousel-container';
+        
+        const carouselScroller = document.createElement('div');
+        carouselScroller.className = 'carousel-scroller';
+        
+        carouselData.elements.forEach(element => {
+            const carouselItem = document.createElement('div');
+            carouselItem.className = 'carousel-item';
+            
+            // Image
+            if (element.imageUrl) {
+                const img = document.createElement('img');
+                img.src = element.imageUrl;
+                img.alt = element.title || 'Product image';
+                img.className = 'carousel-image';
+                carouselItem.appendChild(img);
+            }
+            
+            // Content
+            const content = document.createElement('div');
+            content.className = 'carousel-content';
+            
+            if (element.title) {
+                const title = document.createElement('div');
+                title.className = 'carousel-title';
+                title.textContent = element.title;
+                content.appendChild(title);
+            }
+            
+            if (element.subtitle) {
+                const subtitle = document.createElement('div');
+                subtitle.className = 'carousel-subtitle';
+                subtitle.textContent = element.subtitle;
+                content.appendChild(subtitle);
+            }
+            
+            // Buttons
+            if (element.buttons && element.buttons.length > 0) {
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'carousel-buttons';
+                
+                element.buttons.forEach(button => {
+                    const btn = document.createElement('button');
+                    btn.className = 'carousel-button';
+                    btn.textContent = button.title;
+                    
+                    if (button.url) {
+                        btn.addEventListener('click', () => {
+                            window.open(button.url, '_blank');
+                        });
+                    }
+                    
+                    buttonsContainer.appendChild(btn);
+                });
+                
+                content.appendChild(buttonsContainer);
+            }
+            
+            carouselItem.appendChild(content);
+            carouselScroller.appendChild(carouselItem);
+        });
+        
+        carouselContainer.appendChild(carouselScroller);
+        messageContent.appendChild(carouselContainer);
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
     // Event listeners
@@ -233,10 +454,10 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = Math.min(this.scrollHeight, 60) + 'px';
     });
 
-// Photo/Camera functionality
-let selectedImages = [];
+    // Photo/Camera functionality
+    let selectedImages = [];
 
-function setupPhotoFunctionality() {
+    function setupPhotoFunctionality() {
     const addButton = document.getElementById('addButton');
     const popup = document.getElementById('photoOptionsPopup');
     const cameraOption = document.getElementById('cameraOption');
@@ -280,10 +501,10 @@ function setupPhotoFunctionality() {
         handleImageSelection(e.target.files);
         e.target.value = ''; // Reset input
     });
-}
+    }
 
-// Handle image selection
-function handleImageSelection(files) {
+    // Handle image selection
+    function handleImageSelection(files) {
     Array.from(files).forEach(file => {
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
@@ -293,10 +514,10 @@ function handleImageSelection(files) {
             reader.readAsDataURL(file);
         }
     });
-}
+    }
 
-// Add image preview to input area
-function addImagePreview(imageSrc, file) {
+    // Add image preview to input area
+    function addImagePreview(imageSrc, file) {
     const container = document.getElementById('imagePreviewContainer');
     const preview = document.createElement('div');
     preview.className = 'image-preview';
@@ -350,10 +571,10 @@ function addImagePreview(imageSrc, file) {
     if (inputContainer) {
         inputContainer.classList.add('with-images');
     }
-}
+    }
 
-// Add image message to chat
-function addImageMessage(imageSrc, isUser) {
+    // Add image message to chat
+    function addImageMessage(imageSrc, isUser) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
     
@@ -380,10 +601,10 @@ function addImageMessage(imageSrc, isUser) {
     
     // Scroll to bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+    }
 
-// Function to open single photo in fullscreen view
-function openSinglePhotoView(imageSrc) {
+    // Function to open single photo in fullscreen view
+    function openSinglePhotoView(imageSrc) {
     // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'photo-overlay';
@@ -422,10 +643,10 @@ function openSinglePhotoView(imageSrc) {
             closeSinglePhotoView();
         }
     });
-}
+    }
 
-// Function to close single photo view
-function closeSinglePhotoView() {
+    // Function to close single photo view
+    function closeSinglePhotoView() {
     const overlay = document.getElementById('single-photo-overlay');
     if (overlay) {
         overlay.classList.remove('show');
@@ -435,11 +656,70 @@ function closeSinglePhotoView() {
             }
         }, 300);
     }
-}
+    }
     
-    // Initialize the chat
-    initializeChat();
+    // Setup real-time webhook updates handler for Socket.IO
+    function initializeWebhookStream() {
+        console.log('[Rexy] Setting up Socket.IO webhook handler...');
+        
+        // Register global handler for Socket.IO webhook updates
+        window.handleRealtimeWebhookUpdate = function(webhookResponse) {
+            console.log('[Rexy] Processing real-time webhook update via Socket.IO:', webhookResponse);
+            
+            // Remove typing indicator if it's still showing
+            removeTypingIndicator();
+            
+            // Extract AI response text
+            const aiText = window.NetomiIntegration.extractAIResponseText ? 
+                          window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
+            
+            if (aiText) {
+                console.log('[Rexy] Adding AI response from real-time update:', aiText);
+                addMessage(aiText, false);
+                
+                // Extract and display carousel if available
+                const carouselData = window.NetomiIntegration.extractCarouselData ? 
+                                   window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
+                
+                if (carouselData) {
+                    addCarouselMessage(carouselData);
+                }
+            } else {
+                console.log('[Rexy] No AI text found in real-time update');
+                addMessage("I received your message but couldn't generate a response. Please try again.", false);
+            }
+        };
+        
+        console.log('[Rexy] Socket.IO webhook handler registered');
+    }
     
-    // Photo/Camera functionality
+    // Initialize the welcome chat sequence
+    setTimeout(() => {
+        console.log('[Rexy] Starting initial chat sequence...');
+        // Add sticker first
+        addMessage("", false, true);
+        
+        // Add welcome message
+        setTimeout(() => {
+            addMessage("Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!", false);
+            
+            // Show quick reply options
+            setTimeout(() => {
+                addQuickReplies([
+                    "Is this bag trending online?",
+                    "What are the reviews for the Teri?",
+                    "How can I style the Teri?"
+                ]);
+            }, 500);
+        }, 1000);
+    }, 500);
+    
+    // Initialize real-time webhook updates
+    initializeWebhookStream();
+    
+    // Initialize photo functionality
     setupPhotoFunctionality();
-});
+    
+    } // End of initializeChat function
+    
+}); // End of DOMContentLoaded
