@@ -402,6 +402,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 subtitle.textContent = element.subtitle;
                 content.appendChild(subtitle);
             }
+
+            // Optional description (index.html shows description if present and different)
+            if (element.description && element.description !== element.title) {
+                const desc = document.createElement('div');
+                desc.className = 'carousel-subtitle';
+                desc.textContent = element.description;
+                content.appendChild(desc);
+            }
             
             // Buttons
             if (element.buttons && element.buttons.length > 0) {

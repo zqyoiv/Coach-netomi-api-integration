@@ -327,17 +327,40 @@ function extractAIResponseText(webhookResponse) {
 function extractCarouselData(webhookResponse) {
     try {
         if (!webhookResponse || !webhookResponse.attachments) return null;
-        
-        const carouselAttachment = webhookResponse.attachments.find(att => 
+
+        // Netomi carousel format
+        const netomiCarousel = webhookResponse.attachments.find(att =>
+            att && att.type === 'ai.msg.domain.responses.core.Carousel' && att.attachment && Array.isArray(att.attachment.elements)
+        );
+        if (netomiCarousel) {
+            const att = netomiCarousel.attachment;
+            return {
+                carouselImageAspectRatio: att.carouselImageAspectRatio,
+                elements: att.elements.map(el => ({
+                    imageUrl: el.imageUrl || el.image_url || null,
+                    title: el.title || null,
+                    subtitle: el.subtitle || null,
+                    description: el.description || null,
+                    buttons: Array.isArray(el.buttons) ? el.buttons.map(btn => ({
+                        title: btn.title,
+                        url: btn.url,
+                        type: btn.type
+                    })) : []
+                }))
+            };
+        }
+
+        // Fallback: Messenger-style generic template
+        const fbTemplate = webhookResponse.attachments.find(att => 
             att.type === 'template' && att.payload && att.payload.template_type === 'generic'
         );
-        
-        if (carouselAttachment && carouselAttachment.payload.elements) {
+        if (fbTemplate && fbTemplate.payload.elements) {
             return {
-                elements: carouselAttachment.payload.elements.map(element => ({
+                elements: fbTemplate.payload.elements.map(element => ({
                     imageUrl: element.image_url,
                     title: element.title,
                     subtitle: element.subtitle,
+                    description: element.subtitle,
                     buttons: element.buttons ? element.buttons.map(btn => ({
                         title: btn.title,
                         url: btn.url,
@@ -346,7 +369,7 @@ function extractCarouselData(webhookResponse) {
                 }))
             };
         }
-        
+
         return null;
     } catch (error) {
         console.error('[Netomi] Error extracting carousel data:', error);
