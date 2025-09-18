@@ -428,7 +428,7 @@ app.post('/api/netomi/refresh-token', async (req, res) => {
 // Test route to call process-message API with webhook support
 app.post('/api/netomi/process-message', async (req, res) => {
   try {
-    const { authToken, messageData, waitForWebhook = true, timeoutMs = 30000 } = req.body || {};
+    const { authToken, messageData } = req.body || {};
     
     if (!authToken) {
       return res.status(400).json({ error: 'Missing `authToken` in request body.' });
@@ -438,15 +438,9 @@ app.post('/api/netomi/process-message', async (req, res) => {
       return res.status(400).json({ error: 'Missing `messageData` in request body.' });
     }
 
-    const data = await processMessage(messageData, authToken, waitForWebhook, timeoutMs);
-    console.log('[Netomi process message]', data);
-    
-    if (data && data.webhookResponse) {
-      console.log('[Netomi] Received webhook response with AI payload');
-    } else if (data && data.error) {
-      console.log('[Netomi] Webhook timeout, only acknowledgment received');
-    }
-    
+    // Always return immediately on acknowledgment; do not wait for webhook here
+    const data = await processMessage(messageData, authToken, /* waitForWebhook */ false, /* timeoutMs */ 0);
+    console.log('[Netomi process message] Ack only (webhook will arrive via Socket.IO)');
     return res.status(200).json({ ok: true, data: data ?? {} });
   } catch (err) {
     console.error('Process message failed:', err);

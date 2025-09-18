@@ -163,7 +163,14 @@ async function sendToNetomi(message, options = {}) {
     }
     
     // Format message data EXACTLY like index.html (copied structure)
-    const conversationId = options.conversationId || `chat-${Date.now()}`;
+    // Persist a single conversationId for the tab lifecycle
+    const conversationId = (function ensureConversationId() {
+        if (window.netomiConversationId && typeof window.netomiConversationId === 'string') {
+            return window.netomiConversationId;
+        }
+        window.netomiConversationId = `chat-${Date.now()}`;
+        return window.netomiConversationId;
+    })();
     const userId = "rexy-chat-user";
     
     const messageData = {
@@ -228,8 +235,7 @@ async function sendToNetomi(message, options = {}) {
             body: JSON.stringify({
                 authToken: authToken,
                 messageData: messageData,
-                waitForWebhook: true,
-                timeoutMs: 30000
+                // Always ack-only; webhook will be received via Socket.IO
             })
         });
         
@@ -247,7 +253,7 @@ async function sendToNetomi(message, options = {}) {
             return { ok: false, error: errMsg, status: response.status };
         }
         
-        console.log('[Netomi] Response received:', result);
+        console.log('[Netomi] Ack response received:', result);
         return result;
         
     } catch (error) {
@@ -426,6 +432,13 @@ function initializeSocketConnection() {
             // Notify the chat interface about the new webhook
             if (window.handleRealtimeWebhookUpdate) {
                 window.handleRealtimeWebhookUpdate(data.message.data);
+            } else {
+                // Queue the event until handler is registered
+                if (!Array.isArray(window._pendingWebhookEvents)) {
+                    window._pendingWebhookEvents = [];
+                }
+                window._pendingWebhookEvents.push(data.message.data);
+                console.log('[Netomi] Handler not ready; queued webhook. Queue length:', window._pendingWebhookEvents.length);
             }
         }
     });

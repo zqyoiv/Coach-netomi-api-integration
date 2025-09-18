@@ -109,23 +109,55 @@ document.addEventListener('DOMContentLoaded', function() {
             option.style.pointerEvents = 'none';
         });
         
-        // Add user message
+        // Add user message bubble immediately
         addMessage(text, true);
-        
-        // Generate bot response based on selection
-        setTimeout(() => {
-            let response = "";
-            if (text.includes("trending online")) {
-                response = "Yes! The Teri bag is one of our most popular items right now. It's been trending on social media and loved by fashion influencers worldwide.";
-            } else if (text.includes("reviews")) {
-                response = "The Teri has amazing reviews! Customers love its versatility, quality craftsmanship, and timeless design. It's rated 4.8/5 stars with over 500+ reviews.";
-            } else if (text.includes("style")) {
-                response = "The Teri is incredibly versatile! You can wear it as a crossbody for casual days, or carry it as a handbag for more formal occasions. It pairs perfectly with both jeans and dresses.";
-            } else {
-                response = "Thanks for your question! I'm here to help you with anything about Coach products.";
-            }
-            addMessage(response, false);
-        }, 1000);
+
+        // If Netomi integration is enabled, send as a process-message like normal input
+        const isNetomiEnabled = window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled();
+        if (isNetomiEnabled && window.NetomiIntegration) {
+            // Show typing indicator and route to Netomi
+            addTypingIndicator();
+            window.NetomiIntegration.sendToNetomi(text)
+                .then((response) => {
+                    // Remove typing indicator handled in message handler
+                    if (response && response.ok && response.data && response.data.webhookResponse) {
+                        const webhookResponse = response.data.webhookResponse;
+                        const aiText = window.NetomiIntegration.extractAIResponseText ? 
+                                      window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
+                        if (aiText) {
+                            removeTypingIndicator();
+                            addMessage(aiText, false);
+                        }
+                        const carouselData = window.NetomiIntegration.extractCarouselData ? 
+                                           window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
+                        if (carouselData) {
+                            addCarouselMessage(carouselData);
+                        }
+                    } else {
+                        // removeTypingIndicator();
+                        // addMessage("Your message was sent but I'm thinking. Please try again.", false);
+                    }
+                })
+                .catch(() => {
+                    removeTypingIndicator();
+                    addMessage("I'm having trouble connecting right now. Please try again later.", false);
+                });
+        } else {
+            // Fallback to previous mock logic when Netomi disabled
+            setTimeout(() => {
+                let response = "";
+                if (text.includes("trending online")) {
+                    response = "Yes! The Teri bag is one of our most popular items right now. It's been trending on social media and loved by fashion influencers worldwide.";
+                } else if (text.includes("reviews")) {
+                    response = "The Teri has amazing reviews! Customers love its versatility, quality craftsmanship, and timeless design. It's rated 4.8/5 stars with over 500+ reviews.";
+                } else if (text.includes("style")) {
+                    response = "The Teri is incredibly versatile! You can wear it as a crossbody for casual days, or carry it as a handbag for more formal occasions. It pairs perfectly with both jeans and dresses.";
+                } else {
+                    response = "Thanks for your question! I'm here to help you with anything about Coach products.";
+                }
+                addMessage(response, false);
+            }, 800);
+        }
     }
     
     // Function to add walking Rexy background
@@ -274,7 +306,11 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('[Rexy] Sending message to Netomi:', message);
             
             // Send message to Netomi
-            const response = await window.NetomiIntegration.sendToNetomi(message);
+            // Ensure a persistent conversationId on window before first send
+            if (!window.netomiConversationId) {
+                window.netomiConversationId = `chat-${Date.now()}`;
+            }
+            const response = await window.NetomiIntegration.sendToNetomi(message, { conversationId: window.netomiConversationId });
             
             console.log('[Rexy] Received response from Netomi:', response);
             
@@ -303,8 +339,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             addCarouselMessage(carouselData);
                         }
                     } else {
-                        console.log('[Rexy] No AI text found, showing fallback message');
-                        addMessage("I received your message but couldn't generate a response. Please try again.", false);
+                        // console.log('[Rexy] No AI text found, showing fallback message');
+                        //addMessage("I received your message but couldn't generate a response. Please try again.", false);
                     }
                 } else {
                     // Acknowledgment only - webhook will come via Socket.IO
@@ -693,12 +729,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     addCarouselMessage(carouselData);
                 }
             } else {
-                console.log('[Rexy] No AI text found in real-time update');
-                addMessage("I received your message but couldn't generate a response. Please try again.", false);
+                // console.log('[Rexy] No AI text found in real-time update');
+                // addMessage("I received your message but couldn't generate a response. Please try again.", false);
             }
         };
         
         console.log('[Rexy] Socket.IO webhook handler registered');
+        // Drain any queued webhook events that arrived before handler registration
+        if (Array.isArray(window._pendingWebhookEvents) && window._pendingWebhookEvents.length > 0) {
+            console.log(`[Rexy] Draining ${window._pendingWebhookEvents.length} queued webhook events...`);
+            const queued = window._pendingWebhookEvents.splice(0, window._pendingWebhookEvents.length);
+            queued.forEach((evt) => {
+                try { window.handleRealtimeWebhookUpdate(evt); } catch (e) { console.warn('Failed to process queued webhook:', e); }
+            });
+        }
     }
     
     // Initialize the welcome chat sequence
