@@ -227,6 +227,8 @@ async function sendToNetomi(message, options = {}) {
     console.log('[Netomi] Using auth token from window.netomiAuthToken');
     
     try {
+        // Ensure socket is connected so webhook responses can be pushed in real-time
+        await ensureSocketConnectedAndAuthenticated(3000);
         const response = await fetch('/api/netomi/process-message', {
             method: 'POST',
             headers: {
@@ -236,6 +238,7 @@ async function sendToNetomi(message, options = {}) {
                 authToken: authToken,
                 messageData: messageData,
                 // Always ack-only; webhook will be received via Socket.IO
+                clientSocketId: (window.netomiSocket && window.netomiSocket.id) ? window.netomiSocket.id : null
             })
         });
         
@@ -395,8 +398,16 @@ function initializeSocketConnection() {
     
     console.log('[Netomi] Initializing Socket.IO connection...');
     
-    // Create Socket.IO connection
-    window.netomiSocket = io();
+    // Create Socket.IO connection with resilient options
+    window.netomiSocket = io({
+        transports: ['websocket'], // prefer WS
+        upgrade: false,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000 // connection timeout
+    });
     
     window.netomiSocket.on('connect', () => {
         console.log(`[Netomi] Socket.IO connected: ${window.netomiSocket.id}`);
@@ -425,7 +436,7 @@ function initializeSocketConnection() {
         console.log('[Netomi] Socket.IO authenticated:', data);
     });
     
-    window.netomiSocket.on('webhook_update', (data) => {
+    window.netomiSocket.on('webhook_update', (data, serverAck) => {
         console.log('[Netomi] Received webhook update via Socket.IO:', data);
         
         if (data.message && data.message.data) {
@@ -441,15 +452,97 @@ function initializeSocketConnection() {
                 console.log('[Netomi] Handler not ready; queued webhook. Queue length:', window._pendingWebhookEvents.length);
             }
         }
+
+        // Always acknowledge to server so it won't retry
+        try {
+            if (typeof serverAck === 'function') {
+                serverAck({ ok: true, receivedAt: Date.now(), deliveryId: data && data.deliveryId });
+            }
+        } catch {}
     });
     
     window.netomiSocket.on('disconnect', (reason) => {
         console.log(`[Netomi] Socket.IO disconnected: ${reason}`);
+        // On ping timeout or transport close, try reconnecting
+        if (window.netomiSocket && !window.netomiSocket.connected) {
+            try { window.netomiSocket.connect(); } catch {}
+        }
     });
     
     window.netomiSocket.on('connect_error', (error) => {
         console.error('[Netomi] Socket.IO connection error:', error);
     });
+}
+
+// Ensure socket is connected (and authenticate if token exists). Wait briefly if needed.
+async function ensureSocketConnectedAndAuthenticated(timeoutMs = 3000) {
+    try {
+        // Initialize if missing
+        if (!window.netomiSocket) {
+            initializeSocketConnection();
+        }
+
+        // Already connected
+        if (window.netomiSocket && window.netomiSocket.connected) {
+            // Authenticate if token present (best-effort)
+            if (window.netomiAuthToken) {
+                window.netomiSocket.emit('authenticate', {
+                    authToken: window.netomiAuthToken,
+                    clientInfo: {
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform,
+                        page: 'rexy-chat'
+                    }
+                });
+            }
+            return true;
+        }
+
+        // Wait for connection up to timeout
+        await new Promise((resolve, reject) => {
+            const start = Date.now();
+            const onConnect = () => {
+                window.netomiSocket.off('connect_error', onError);
+                // Authenticate if token available
+                if (window.netomiAuthToken) {
+                    window.netomiSocket.emit('authenticate', {
+                        authToken: window.netomiAuthToken,
+                        clientInfo: {
+                            userAgent: navigator.userAgent,
+                            platform: navigator.platform,
+                            page: 'rexy-chat'
+                        }
+                    });
+                }
+                resolve();
+            };
+            const onError = (err) => {
+                if (Date.now() - start >= timeoutMs) {
+                    window.netomiSocket.off('connect', onConnect);
+                    window.netomiSocket.off('connect_error', onError);
+                    reject(err);
+                }
+            };
+            const timer = setTimeout(() => {
+                window.netomiSocket.off('connect', onConnect);
+                window.netomiSocket.off('connect_error', onError);
+                reject(new Error('Socket connect timeout'));
+            }, timeoutMs);
+            window.netomiSocket.once('connect', () => {
+                clearTimeout(timer);
+                onConnect();
+            });
+            window.netomiSocket.on('connect_error', onError);
+            // Kick off connection if not started
+            if (!window.netomiSocket.connected) {
+                try { window.netomiSocket.connect(); } catch {}
+            }
+        });
+        return window.netomiSocket && window.netomiSocket.connected;
+    } catch (e) {
+        console.warn('[Netomi] ensureSocketConnectedAndAuthenticated failed:', e?.message || e);
+        return false;
+    }
 }
 
 // Export functions for use in other scripts

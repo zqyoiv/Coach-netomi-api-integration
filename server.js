@@ -16,7 +16,10 @@ const io = new Server(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  // Increase heartbeat tolerances to reduce ping timeouts on slow networks or throttled tabs
+  pingInterval: 25000, // server ping every 25s
+  pingTimeout: 60000,  // allow up to 60s without pong before closing
 });
 
 app.use(express.json({ limit: '1mb' }));
@@ -428,7 +431,7 @@ app.post('/api/netomi/refresh-token', async (req, res) => {
 // Test route to call process-message API with webhook support
 app.post('/api/netomi/process-message', async (req, res) => {
   try {
-    const { authToken, messageData } = req.body || {};
+    const { authToken, messageData, clientSocketId } = req.body || {};
     
     if (!authToken) {
       return res.status(400).json({ error: 'Missing `authToken` in request body.' });
@@ -436,6 +439,18 @@ app.post('/api/netomi/process-message', async (req, res) => {
     
     if (!messageData) {
       return res.status(400).json({ error: 'Missing `messageData` in request body.' });
+    }
+
+    // Log socket status for observability
+    if (clientSocketId) {
+      const client = connectedClients.get(clientSocketId);
+      if (!client) {
+        console.warn(`[Process Message] Provided clientSocketId ${clientSocketId} is not connected`);
+      } else {
+        console.log(`[Process Message] Client ${clientSocketId} is connected (${client.authenticated ? 'authenticated' : 'unauthenticated'})`);
+      }
+    } else {
+      console.warn('[Process Message] No clientSocketId provided');
     }
 
     // Always return immediately on acknowledgment; do not wait for webhook here
@@ -555,23 +570,45 @@ io.on('connection', (socket) => {
 
 // Function to broadcast webhook updates to all connected Socket.IO clients
 function broadcastWebhookUpdate(webhookMessage) {
+  const deliveryId = crypto.randomUUID();
   const eventData = {
     type: 'webhook_update',
     message: webhookMessage,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    deliveryId
   };
 
-  console.log(`[Socket.IO] Broadcasting to ${connectedClients.size} connected clients`);
+  console.log(`[Socket.IO] Broadcasting to ${connectedClients.size} connected clients (deliveryId=${deliveryId})`);
 
-  // Send to all authenticated clients
-  connectedClients.forEach((client, clientId) => {
+  function sendWithRetry(client, clientId, attempt = 1) {
     try {
-      client.socket.emit('webhook_update', eventData);
+      client.socket
+        .timeout(10000)
+        .emit('webhook_update', eventData, (err, ack) => {
+          if (err) {
+            console.warn(`[Socket.IO] Ack timeout for client ${clientId} on attempt ${attempt} (deliveryId=${deliveryId})`);
+            if (attempt < 2) {
+              // Check connection and retry once
+              if (client.socket.connected) {
+                console.log(`[Socket.IO] Retrying send to ${clientId} (deliveryId=${deliveryId})`);
+                sendWithRetry(client, clientId, attempt + 1);
+              } else {
+                console.warn(`[Socket.IO] Client ${clientId} not connected; skipping retry`);
+              }
+            }
+            return;
+          }
+          console.log(`[Socket.IO] Ack received from client ${clientId} (deliveryId=${deliveryId})`, ack);
+        });
     } catch (error) {
       console.error(`[Socket.IO] Failed to send to client ${clientId}:`, error);
-      // Remove dead connection
       connectedClients.delete(clientId);
     }
+  }
+
+  // Send to all clients
+  connectedClients.forEach((client, clientId) => {
+    sendWithRetry(client, clientId, 1);
   });
 }
 
