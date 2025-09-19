@@ -194,7 +194,7 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
     method: 'POST',
     headers: {
       'x-channel': CONFIG.CHANNEL,
-      'x-integration-channel': 'CHAT_API',
+      'x-integration-channel': 'NETOMI_WEB_WIDGET',
       'x-channel-ref-id': CONFIG.CHANNEL_REF_ID,
       'Content-Type': 'application/json',
       'x-virtual-agent-id': CONFIG.VIRTUAL_AGENT_ID,
