@@ -243,7 +243,8 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
 const pendingRequests = new Map(); // requestId -> { resolve, reject, timestamp }
 const conversations = new Map(); // conversationId -> messages array
 const webhookMessages = []; // Store recent webhook messages for frontend display
-const connectedClients = new Map(); // Store Socket.IO clients with their auth tokens
+const connectedClients = new Map(); // socketId -> { socket, authToken, authenticated, connectedAt, conversationIds?: Set }
+const conversationToSocket = new Map(); // conversationId -> socketId
 
 // ------------------------------
 // Routes
@@ -315,7 +316,7 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     }
     
     // Extract request ID from payload to match with pending requests
-    const requestId = payload.requestId || payload.id || payload.conversationId;
+    const requestId = payload.requestId || payload.id || (payload.requestPayload && payload.requestPayload.conversationId);
     
     if (requestId && pendingRequests.has(requestId)) {
       // Resolve the pending promise with the webhook payload
@@ -326,7 +327,7 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     }
     
     // Store the conversation message for later retrieval
-    const conversationId = payload.conversationId;
+    const conversationId = payload.requestPayload && payload.requestPayload.conversationId;
     if (conversationId) {
       if (!conversations.has(conversationId)) {
         conversations.set(conversationId, []);
@@ -430,31 +431,65 @@ app.post('/api/netomi/refresh-token', async (req, res) => {
 
 // Test route to call process-message API with webhook support
 app.post('/api/netomi/process-message', async (req, res) => {
+  console.log(`[Process Message]`);
   try {
     const { authToken, messageData, clientSocketId } = req.body || {};
-    
-    if (!authToken) {
-      return res.status(400).json({ error: 'Missing `authToken` in request body.' });
-    }
-    
+
     if (!messageData) {
+      console.error('[Process Message] ERROR: Missing messageData in request body');
       return res.status(400).json({ error: 'Missing `messageData` in request body.' });
     }
 
-    // Log socket status for observability
-    if (clientSocketId) {
+    // Handle missing clientSocketId by falling back to direct auth token usage
+    let authTokenToUse;
+    let clientSocketId_safe = clientSocketId;
+    
+    if (!clientSocketId) {
+      console.warn('[Process Message] WARNING: Missing clientSocketId, attempting fallback to direct authToken');
+      console.log('[Process Message] Request body authToken present:', !!authToken);
+      
+      if (!authToken) {
+        console.error('[Process Message] ERROR: No clientSocketId and no fallback authToken provided');
+        return res.status(400).json({ error: 'Missing both `clientSocketId` and `authToken` in request body.' });
+      }
+      
+      // Use the provided auth token directly (fallback mode)
+      authTokenToUse = authToken;
+      console.log('[Process Message] Using fallback mode with provided authToken');
+    } else {
+      // Look up the client and use its stored auth token (normal mode)
       const client = connectedClients.get(clientSocketId);
       if (!client) {
-        console.warn(`[Process Message] Provided clientSocketId ${clientSocketId} is not connected`);
-      } else {
-        console.log(`[Process Message] Client ${clientSocketId} is connected (${client.authenticated ? 'authenticated' : 'unauthenticated'})`);
+        console.error(`[Process Message] ERROR: Unknown clientSocketId: ${clientSocketId}`);
+        console.error('[Process Message] Available connected clients:', Array.from(connectedClients.keys()));
+        return res.status(400).json({ error: `Unknown clientSocketId: ${clientSocketId}` });
       }
-    } else {
-      console.warn('[Process Message] No clientSocketId provided');
+      if (!client.authenticated || !client.authToken) {
+        console.error(`[Process Message] ERROR: Socket ${clientSocketId} not authenticated`);
+        console.error('[Process Message] Client state:', { authenticated: client.authenticated, hasAuthToken: !!client.authToken });
+        return res.status(401).json({ error: 'Socket not authenticated. Generate token first, then authenticate the socket.' });
+      }
+      
+      authTokenToUse = client.authToken;
+      console.log(`[Process Message] Using server-stored token for client ${clientSocketId}`);
     }
 
+    // Map conversationId -> socketId for targeted webhook routing (only if we have a valid socket)
+    try {
+      const convId = messageData && messageData.conversationId;
+      if (convId && typeof convId === 'string' && clientSocketId) {
+        conversationToSocket.set(convId, clientSocketId);
+        const client = connectedClients.get(clientSocketId);
+        if (client) {
+          if (!client.conversationIds) client.conversationIds = new Set();
+          client.conversationIds.add(convId);
+          console.log(`[Routing] conversationId ${convId} mapped to socket ${clientSocketId}`);
+        }
+      }
+    } catch (_) {}
+
     // Always return immediately on acknowledgment; do not wait for webhook here
-    const data = await processMessage(messageData, authToken, /* waitForWebhook */ false, /* timeoutMs */ 0);
+    const data = await processMessage(messageData, authTokenToUse, /* waitForWebhook */ false, /* timeoutMs */ 0);
     console.log('[Netomi process message] Ack only (webhook will arrive via Socket.IO)');
     return res.status(200).json({ ok: true, data: data ?? {} });
   } catch (err) {
@@ -559,6 +594,16 @@ io.on('connection', (socket) => {
   // Handle client disconnect
   socket.on('disconnect', (reason) => {
     console.log(`[Socket.IO] Client disconnected: ${socket.id}, reason: ${reason}`);
+    const client = connectedClients.get(socket.id);
+    if (client && client.conversationIds) {
+      client.conversationIds.forEach((convId) => {
+        const mapped = conversationToSocket.get(convId);
+        if (mapped === socket.id) {
+          conversationToSocket.delete(convId);
+          console.log(`[Routing] Unmapped conversation ${convId} from socket ${socket.id}`);
+        }
+      });
+    }
     connectedClients.delete(socket.id);
   });
   
@@ -568,7 +613,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Function to broadcast webhook updates to all connected Socket.IO clients
+// Function to send webhook updates to clients with matching conversation ID
 function broadcastWebhookUpdate(webhookMessage) {
   const deliveryId = crypto.randomUUID();
   const eventData = {
@@ -578,7 +623,33 @@ function broadcastWebhookUpdate(webhookMessage) {
     deliveryId
   };
 
-  console.log(`[Socket.IO] Broadcasting to ${connectedClients.size} connected clients (deliveryId=${deliveryId})`);
+  // Extract conversationId from webhook payload
+  const convId = webhookMessage && webhookMessage.data && webhookMessage.data.requestPayload && webhookMessage.data.requestPayload.conversationId;
+  
+  if (!convId) {
+    console.warn(`[Socket.IO] No conversationId found in webhook payload (deliveryId=${deliveryId})`);
+    return;
+  }
+
+  // Find the socket mapped to this conversationId
+  const targetSocketId = conversationToSocket.get(convId);
+  
+  if (!targetSocketId) {
+    console.warn(`[Socket.IO] No socket found for conversation ${convId} (deliveryId=${deliveryId})`);
+    return;
+  }
+
+  if (!connectedClients.has(targetSocketId)) {
+    console.warn(`[Socket.IO] Socket ${targetSocketId} no longer connected for conversation ${convId} (deliveryId=${deliveryId})`);
+    // Clean up stale mapping
+    conversationToSocket.delete(convId);
+    return;
+  }
+
+  // Send only to the targeted socket
+  console.log(`[Socket.IO] Targeted send for conversation ${convId} to socket ${targetSocketId} (deliveryId=${deliveryId})`);
+  const client = connectedClients.get(targetSocketId);
+  sendWithRetry(client, targetSocketId, 1);
 
   function sendWithRetry(client, clientId, attempt = 1) {
     try {
@@ -594,6 +665,11 @@ function broadcastWebhookUpdate(webhookMessage) {
                 sendWithRetry(client, clientId, attempt + 1);
               } else {
                 console.warn(`[Socket.IO] Client ${clientId} not connected; skipping retry`);
+                // Clean up mapping if client disconnected
+                if (conversationToSocket.get(convId) === clientId) {
+                  conversationToSocket.delete(convId);
+                  console.log(`[Routing] Cleaned up mapping for conversation ${convId} from disconnected socket ${clientId}`);
+                }
               }
             }
             return;
@@ -603,13 +679,13 @@ function broadcastWebhookUpdate(webhookMessage) {
     } catch (error) {
       console.error(`[Socket.IO] Failed to send to client ${clientId}:`, error);
       connectedClients.delete(clientId);
+      // Clean up conversation mapping if this was the mapped socket
+      if (conversationToSocket.get(convId) === clientId) {
+        conversationToSocket.delete(convId);
+        console.log(`[Routing] Cleaned up mapping for conversation ${convId} from failed socket ${clientId}`);
+      }
     }
   }
-
-  // Send to all clients
-  connectedClients.forEach((client, clientId) => {
-    sendWithRetry(client, clientId, 1);
-  });
 }
 
 httpServer.listen(CONFIG.PORT, () => {
