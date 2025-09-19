@@ -136,23 +136,9 @@ function initializeDebugPanelEvents() {
     // Netomi toggle
     netomiToggle.addEventListener('change', function() {
         window.RexyGlobalState.setNetomiEnabled(this.checked);
-        updateDebugInfo();
-        
-        // Generate token when enabling Netomi
         if (this.checked && window.NetomiIntegration) {
-            console.log('[Debug] Netomi enabled, generating token...');
-            window.NetomiIntegration.generateToken().catch(error => {
-                console.warn('[Debug] Auto token generation failed:', error);
-            });
+            window.NetomiIntegration.generateToken().catch(() => {});
         }
-        
-        // Show feedback
-        const statusText = document.querySelector('.status-text');
-        const originalText = statusText.textContent;
-        statusText.textContent = 'Updated!';
-        setTimeout(() => {
-            statusText.textContent = originalText;
-        }, 1000);
     });
 
     if (rexy3DToggle) {
@@ -161,25 +147,7 @@ function initializeDebugPanelEvents() {
         });
     }
     
-    // Test actions
-    const testConnectionBtn = document.getElementById('testNetomiConnection');
-    const clearHistoryBtn = document.getElementById('clearChatHistory');
-    const resetSettingsBtn = document.getElementById('resetDebugSettings');
-    
-    if (testConnectionBtn) testConnectionBtn.addEventListener('click', testNetomiConnection);
-    if (clearHistoryBtn) clearHistoryBtn.addEventListener('click', clearChatHistory);
-    if (resetSettingsBtn) resetSettingsBtn.addEventListener('click', resetDebugSettings);
-    
-    // Token actions (if buttons exist)
-    const generateTokenButton = document.getElementById('generateTokenButton');
-    const refreshTokenButton = document.getElementById('refreshTokenButton');
-    
-    if (generateTokenButton) {
-        generateTokenButton.addEventListener('click', generateToken);
-    }
-    if (refreshTokenButton) {
-        refreshTokenButton.addEventListener('click', refreshToken);
-    }
+    // No other actions; panel is minimal by design now
 }
 
 // Initialize debug panel
@@ -200,24 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function updateDebugStatus() {
-    const statusIndicator = document.querySelector('.status-indicator');
-    const statusText = document.querySelector('.status-text');
-    
-    if (isNetomiEnabled) {
-        statusIndicator.className = 'status-indicator active';
-        statusText.textContent = 'Active';
-    } else {
-        statusIndicator.className = 'status-indicator inactive';
-        statusText.textContent = 'Disabled';
-    }
-}
-
-function updateDebugInfo() {
-    document.getElementById('debugMode').textContent = isNetomiEnabled ? 'Production' : 'Development';
-    document.getElementById('debugEndpoint').textContent = isNetomiEnabled ? 'Netomi API' : 'Mock Responses';
-    document.getElementById('debugConnectionStatus').textContent = isNetomiEnabled ? 'Connected' : 'Offline';
-}
+function updateDebugStatus() {}
 
 async function testNetomiConnection() {
     const button = document.getElementById('testNetomiConnection');

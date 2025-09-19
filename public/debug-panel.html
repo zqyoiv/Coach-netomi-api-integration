@@ -12,14 +12,6 @@
                         <span class="debug-slider"></span>
                         <span class="debug-label">Netomi Integration</span>
                     </label>
-                    <div class="debug-status" id="netomiStatus">
-                        <span class="status-indicator active"></span>
-                        <span class="status-text">Active</span>
-                    </div>
-                </div>
-                <div class="debug-description">
-                    When enabled, chat messages are sent to Netomi API for AI responses. 
-                    When disabled, uses hardcoded/fake responses for testing.
                 </div>
             </div>
 
@@ -36,54 +28,7 @@
                 </div>
             </div>
             
-            <div class="debug-section">
-                <h4>System Info</h4>
-                <div class="debug-info">
-                    <div class="info-row">
-                        <span class="info-label">Mode:</span>
-                        <span class="info-value" id="debugMode">Production</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Endpoint:</span>
-                        <span class="info-value" id="debugEndpoint">Netomi API</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Status:</span>
-                        <span class="info-value" id="debugConnectionStatus">Connected</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="debug-section" id="debugTokenSection">
-                <h4>Authentication Token</h4>
-                <div class="debug-info">
-                    <div class="info-row">
-                        <span class="info-label">Status:</span>
-                        <span class="info-value" id="debugTokenStatus">Not Generated</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Token:</span>
-                        <span class="info-value" id="debugTokenDisplay">None</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Expires:</span>
-                        <span class="info-value" id="debugTokenExpiry">N/A</span>
-                    </div>
-                </div>
-                <div class="debug-actions" style="margin-top: 12px;">
-                    <button class="debug-action-button" id="generateTokenButton">Generate Token</button>
-                    <button class="debug-action-button" id="refreshTokenButton">Refresh Token</button>
-                </div>
-            </div>
-
-            <div class="debug-section">
-                <h4>Test Actions</h4>
-                <div class="debug-actions">
-                    <button class="debug-action-button" id="testNetomiConnection">Test Netomi Connection</button>
-                    <button class="debug-action-button" id="clearChatHistory">Clear Chat History</button>
-                    <button class="debug-action-button" id="resetDebugSettings">Reset Settings</button>
-                </div>
-            </div>
+            
         </div>
     </div>
 </div>
