@@ -4,6 +4,33 @@
 // Store tokens in window object for global access
 window.netomiAuthToken = null;
 window.netomiTokenExpiry = null;
+// Ensure per-tab conversation id (persists across refresh, unique across tabs)
+function getOrCreateConversationId() {
+    try {
+        const key = 'netomiConversationId';
+        let id = sessionStorage.getItem(key);
+        if (id && typeof id === 'string' && id.trim() !== '') {
+            window.netomiConversationId = id;
+            return id;
+        }
+        const generateId = () => {
+            if (window.crypto && window.crypto.randomUUID) {
+                return `chat-${window.crypto.randomUUID()}`;
+            }
+            return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        };
+        id = generateId();
+        sessionStorage.setItem(key, id);
+        window.netomiConversationId = id;
+        return id;
+    } catch (e) {
+        // Fallback if sessionStorage not available
+        if (window.netomiConversationId) return window.netomiConversationId;
+        const fallback = `chat-${Date.now()}`;
+        window.netomiConversationId = fallback;
+        return fallback;
+    }
+}
 
 /**
  * Generate a new Netomi authentication token
@@ -163,14 +190,8 @@ async function sendToNetomi(message, options = {}) {
     }
     
     // Format message data EXACTLY like index.html (copied structure)
-    // Persist a single conversationId for the tab lifecycle
-    const conversationId = (function ensureConversationId() {
-        if (window.netomiConversationId && typeof window.netomiConversationId === 'string') {
-            return window.netomiConversationId;
-        }
-        window.netomiConversationId = `chat-${Date.now()}`;
-        return window.netomiConversationId;
-    })();
+    // Persist a single conversationId per tab using sessionStorage
+    const conversationId = getOrCreateConversationId();
     const userId = "rexy-chat-user";
     
     const messageData = {
@@ -552,6 +573,7 @@ window.NetomiIntegration = {
     testConnection: testNetomiConnection,
     getCurrentToken: () => window.netomiAuthToken,
     getTokenExpiry: () => window.netomiTokenExpiry,
+    getConversationId: getOrCreateConversationId,
     extractAIResponseText,
     extractCarouselData,
     initializeSocketConnection

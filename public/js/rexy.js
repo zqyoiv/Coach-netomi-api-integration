@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     
     // Function to add a message to the chat
-    function addMessage(text, isUser = true, isSticker = false) {
+    function addMessage(text, isUser = true, isSticker = false, options = {}) {
+        const isHtml = options && options.isHtml === true;
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
         
@@ -58,7 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Bot message - black bubble  
             const messageBubble = document.createElement('div');
             messageBubble.className = 'message-bubble bot-bubble';
-            messageBubble.textContent = text;
+            if (isHtml) {
+                messageBubble.innerHTML = text;
+                // Post-process special links to source cards
+                try { transformSourceLinks(messageBubble); } catch (_) {}
+            } else {
+                messageBubble.textContent = text;
+            }
             messageContent.appendChild(messageBubble);
         }
         
@@ -67,6 +74,69 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Heuristic: detect if a string likely contains HTML tags
+    function stringLooksLikeHtml(str) {
+        if (!str || typeof str !== 'string') return false;
+        return /<\s*\w+[^>]*>/i.test(str);
+    }
+
+    function transformSourceLinks(containerEl) {
+        const anchors = containerEl.querySelectorAll('a.source-link-number');
+        anchors.forEach((a) => {
+            const href = a.getAttribute('href');
+            const number = (a.textContent || '').trim() || '1';
+
+            let label = '';
+            let origin = '';
+            try {
+                const u = new URL(href, window.location.origin);
+                origin = u.origin;
+                const pathLast = u.pathname.split('/').filter(Boolean).pop() || u.hostname;
+                const hash = u.hash ? decodeURIComponent(u.hash.replace(/^#/, '')) : '';
+                label = decodeURIComponent(hash ? `${pathLast}#${hash}` : pathLast);
+            } catch (e) {
+                label = decodeURIComponent((href || '').replace(/^https?:\/\//, ''));
+            }
+
+            const wrapper = document.createElement('span');
+            wrapper.className = 'source-card';
+
+            const numBadge = document.createElement('span');
+            numBadge.className = 'source-number';
+            numBadge.textContent = number;
+
+            const link = document.createElement('a');
+            link.className = 'source-chip source-link';
+            link.href = href || '#';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+
+            const icon = document.createElement('img');
+            icon.className = 'source-favicon';
+            icon.alt = '';
+            icon.width = 14;
+            icon.height = 14;
+            if (origin) {
+                icon.src = `${origin}/favicon.ico`;
+                icon.onerror = function() { icon.style.display = 'none'; };
+            } else {
+                icon.style.display = 'none';
+            }
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'source-text';
+            textSpan.textContent = label || href || '';
+
+            link.appendChild(icon);
+            link.appendChild(textSpan);
+
+            wrapper.appendChild(numBadge);
+            wrapper.appendChild(link);
+
+            a.replaceWith(wrapper);
+        });
     }
     
     // Function to add quick reply options
@@ -307,9 +377,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Send message to Netomi
             // Ensure a persistent conversationId on window before first send
-            if (!window.netomiConversationId) {
-                window.netomiConversationId = `chat-${Date.now()}`;
-            }
+                        if (!window.netomiConversationId) {
+                            // Obtain per-tab conversation id from integration helper (sessionStorage-backed)
+                            if (window.NetomiIntegration && window.NetomiIntegration.getConversationId) {
+                                window.netomiConversationId = window.NetomiIntegration.getConversationId();
+                            } else {
+                                window.netomiConversationId = `chat-${Date.now()}`;
+                            }
+                        }
             const response = await window.NetomiIntegration.sendToNetomi(message, { conversationId: window.netomiConversationId });
             
             console.log('[Rexy] Received response from Netomi:', response);
@@ -329,7 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                   window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
                     
                     if (aiText) {
-                        addMessage(aiText, false);
+                        addMessage(aiText, false, false, { isHtml: stringLooksLikeHtml(aiText) });
                         
                         // Extract and display carousel if available
                         const carouselData = window.NetomiIntegration.extractCarouselData ? 
@@ -719,7 +794,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (aiText) {
                 console.log('[Rexy] Adding AI response from real-time update:', aiText);
-                addMessage(aiText, false);
+                addMessage(aiText, false, false, { isHtml: stringLooksLikeHtml(aiText) });
                 
                 // Extract and display carousel if available
                 const carouselData = window.NetomiIntegration.extractCarouselData ? 

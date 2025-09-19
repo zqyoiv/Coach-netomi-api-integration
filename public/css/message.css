@@ -234,3 +234,57 @@
 @media (min-width: 1024px) {
     .carousel-item { flex-basis: 33%; }
 }
+
+/* Source card styling for inline citation links */
+.source-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    margin: 6px 0 0 0;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.07);
+    border-radius: 8px;
+}
+
+.source-card .source-number {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #000;
+    background: #fff;
+}
+
+.source-card .source-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.25);
+}
+
+.source-card .source-link {
+    color: #c9eaff;
+    text-decoration: none;
+}
+
+.source-card .source-favicon {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.source-card .source-text {
+    font-size: 13px;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
