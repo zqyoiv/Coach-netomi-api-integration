@@ -128,6 +128,17 @@
     opacity: 0;
 }
 
+/* Thinking Rexy animation inside chat */
+.thinking-rexy {
+    position: relative;
+    display: block;
+    width: 82px;
+    height: auto;
+    margin: 6px 0 0 8px;
+    opacity: 0.9;
+    pointer-events: none;
+}
+
 /* Fullscreen 3D Overlay */
 .rexy-3d-overlay {
     position: fixed;

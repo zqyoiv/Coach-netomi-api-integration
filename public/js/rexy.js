@@ -457,6 +457,11 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         
+        // Show full-screen 3D thinking overlay while waiting for webhook (guarded by debug flag)
+        if (window.RexyGlobalState && window.RexyGlobalState.is3DOn && window.RexyGlobalState.is3DOn()) {
+            showThinkingOverlay();
+        }
+        
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -467,6 +472,59 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typingIndicator) {
             typingIndicator.remove();
         }
+        // Hide full-screen 3D thinking overlay when typing indicator is removed
+        hideThinkingOverlay();
+    }
+
+    // Show thinking Rexy animation overlay inside chat area
+    function addThinkingRexy() {
+        if (document.getElementById('thinking-rexy')) return;
+        const thinking = document.createElement('img');
+        thinking.src = 'image/3d/Rexy_Thinking.gif';
+        thinking.alt = 'Rexy thinking';
+        thinking.className = 'thinking-rexy';
+        thinking.id = 'thinking-rexy';
+        chatMessages.appendChild(thinking);
+    }
+
+    function removeThinkingRexy() {
+        const el = document.getElementById('thinking-rexy');
+        if (el && el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    }
+
+    // Full-screen thinking overlay (persistent until explicitly hidden)
+    function showThinkingOverlay() {
+        if (document.getElementById('rexy-3d-overlay')) return; // already showing
+        const overlay = document.createElement('div');
+        overlay.className = 'rexy-3d-overlay';
+        overlay.id = 'rexy-3d-overlay';
+
+        // Try to use preloaded animation if available
+        const cached = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Thinking');
+        const gif = document.createElement('img');
+        gif.className = 'rexy-3d-gif';
+        gif.alt = 'Rexy Thinking';
+        gif.src = cached ? cached.src : 'image/3d/Rexy_Thinking.gif';
+        gif.onerror = function() {
+            // If loading fails, remove overlay
+            hideThinkingOverlay();
+        };
+
+        overlay.appendChild(gif);
+        document.body.appendChild(overlay);
+        // fade-in
+        setTimeout(() => overlay.classList.add('show'), 10);
+    }
+
+    function hideThinkingOverlay() {
+        const overlay = document.getElementById('rexy-3d-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('show');
+        setTimeout(() => {
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 300);
     }
     
     // Add carousel message

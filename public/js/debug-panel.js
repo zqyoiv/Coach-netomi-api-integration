@@ -6,6 +6,7 @@ let debugPanelLoaded = false;
 window.RexyGlobalState = {
     listeners: [],
     authToken: null,
+    is3DEnabled: true,
     
     setNetomiEnabled(enabled) {
         const oldValue = isNetomiEnabled;
@@ -28,6 +29,14 @@ window.RexyGlobalState = {
                 }
             });
         }
+    },
+    set3DEnabled(enabled) {
+        this.is3DEnabled = enabled;
+        try { localStorage.setItem('rexy3DEnabled', enabled ? 'true' : 'false'); } catch {}
+        console.log(`[GlobalState] 3D overlay ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    },
+    is3DOn() {
+        return this.is3DEnabled === true;
     },
     
     isNetomiEnabled() {
@@ -54,6 +63,10 @@ window.RexyGlobalState = {
         const savedState = localStorage.getItem('netomiEnabled');
         if (savedState !== null) {
             isNetomiEnabled = savedState === 'true';
+        }
+        const saved3D = localStorage.getItem('rexy3DEnabled');
+        if (saved3D !== null) {
+            this.is3DEnabled = saved3D === 'true';
         }
     }
 };
@@ -89,6 +102,7 @@ function initializeDebugPanelEvents() {
     const debugPanel = document.getElementById('debugPanel');
     const debugClose = document.getElementById('debugClose');
     const netomiToggle = document.getElementById('netomiToggle');
+    const rexy3DToggle = document.getElementById('rexy3DToggle');
     
     if (!debugPanel || !debugClose || !netomiToggle) {
         console.error('[Debug] Debug panel elements not found after loading');
@@ -101,6 +115,10 @@ function initializeDebugPanelEvents() {
         isNetomiEnabled = savedNetomiState === 'true';
         netomiToggle.checked = isNetomiEnabled;
         updateDebugStatus();
+    }
+    const saved3DState = localStorage.getItem('rexy3DEnabled');
+    if (rexy3DToggle) {
+        rexy3DToggle.checked = saved3DState !== null ? (saved3DState === 'true') : window.RexyGlobalState.is3DOn();
     }
     
     // Close panel
@@ -136,6 +154,12 @@ function initializeDebugPanelEvents() {
             statusText.textContent = originalText;
         }, 1000);
     });
+
+    if (rexy3DToggle) {
+        rexy3DToggle.addEventListener('change', function() {
+            window.RexyGlobalState.set3DEnabled(this.checked);
+        });
+    }
     
     // Test actions
     const testConnectionBtn = document.getElementById('testNetomiConnection');
