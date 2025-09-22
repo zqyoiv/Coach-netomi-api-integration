@@ -247,6 +247,105 @@ const connectedClients = new Map(); // socketId -> { socket, authToken, authenti
 const conversationToSocket = new Map(); // conversationId -> socketId
 
 // ------------------------------
+// Server-side token management
+// ------------------------------
+let serverAuthToken = null;
+let serverTokenExpiry = null;
+let tokenRefreshTimer = null;
+
+/**
+ * Generate and store a new server-side token
+ */
+async function generateServerToken() {
+  try {
+    console.log('[Server Token] Generating new server-side token...');
+    const tokenData = await generateToken();
+    
+    // Extract token and expiry from response
+    const token = tokenData.payload?.token || tokenData.token || tokenData.access_token;
+    const expiresIn = tokenData.payload?.expires_in || tokenData.expires_in || tokenData.expiresIn;
+    
+    if (!token) {
+      throw new Error('No token found in response');
+    }
+    
+    serverAuthToken = token;
+    serverTokenExpiry = expiresIn ? Date.now() + (expiresIn * 1000) : null;
+    
+    console.log('[Server Token] Token generated successfully');
+    console.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
+    console.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
+    
+    return { token, expiresIn, expiresAt: serverTokenExpiry };
+  } catch (error) {
+    console.error('[Server Token] Failed to generate token:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if the current server token is still valid
+ */
+function isServerTokenValid() {
+  if (!serverAuthToken) return false;
+  if (!serverTokenExpiry) return true; // Assume valid if no expiration
+  return Date.now() < serverTokenExpiry;
+}
+
+/**
+ * Get the current server token (read-only, never generates new tokens)
+ */
+function getCurrentServerToken() {
+  if (isServerTokenValid()) {
+    console.log('[Server Token] Returning valid existing token');
+    return serverAuthToken;
+  }
+  
+  console.log('[Server Token] Current token is expired or missing');
+  return null; // Don't generate, let auto-refresh handle it
+}
+
+/**
+ * Get the current valid server token, generating a new one ONLY for server-side operations
+ * This should NEVER be called by client-facing endpoints
+ */
+async function getValidServerTokenInternal() {
+  if (isServerTokenValid()) {
+    console.log('[Server Token] Using existing valid token');
+    return serverAuthToken;
+  }
+  
+  console.log('[Server Token] Token expired or missing, generating new one...');
+  await generateServerToken();
+  return serverAuthToken;
+}
+
+/**
+ * Set up automatic token refresh every 23 hours
+ */
+function setupTokenRefresh() {
+  // Clear existing timer if any
+  if (tokenRefreshTimer) {
+    clearInterval(tokenRefreshTimer);
+  }
+  
+  // Refresh every 23 hours (23 * 60 * 60 * 1000 ms)
+  const refreshInterval = 23 * 60 * 60 * 1000;
+  
+  tokenRefreshTimer = setInterval(async () => {
+    try {
+      console.log('[Server Token] Auto-refreshing token (23-hour cycle)...');
+      await generateServerToken();
+      console.log('[Server Token] Token auto-refresh completed');
+    } catch (error) {
+      console.error('[Server Token] Auto-refresh failed:', error);
+    }
+  }, refreshInterval);
+  
+  console.log('[Server Token] Auto-refresh timer set for every 23 hours');
+}
+
+// ------------------------------
 // Routes
 // ------------------------------
 
@@ -399,14 +498,31 @@ app.get('/api/conversations', (req, res) => {
   });
 });
 
-// Test route to call generate-token API
+// Get current server token (read-only, never generates new tokens on client request)
 app.get('/api/netomi/generate-token', async (_req, res) => {
   try {
-    const data = await generateToken();
-    console.log('[Netomi token]', data);
-    return res.status(200).json({ ok: true, data });
+    const token = getCurrentServerToken(); // Changed to read-only function
+    
+    if (!token) {
+      console.log('[Server Token] No valid token available for client, token refresh in progress');
+      return res.status(503).json({ 
+        ok: false, 
+        error: 'Server token not available',
+        message: 'Please retry in a few seconds' 
+      });
+    }
+    
+    const tokenData = {
+      payload: {
+        token: token,
+        expires_in: serverTokenExpiry ? Math.floor((serverTokenExpiry - Date.now()) / 1000) : null,
+        expiresAt: serverTokenExpiry
+      }
+    };
+    console.log('[Server Token] Returning current server token to client (read-only)');
+    return res.status(200).json({ ok: true, data: tokenData });
   } catch (err) {
-    console.error('Token fetch failed:', err);
+    console.error('Server token fetch failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
@@ -433,46 +549,16 @@ app.post('/api/netomi/refresh-token', async (req, res) => {
 app.post('/api/netomi/process-message', async (req, res) => {
   console.log(`[Process Message]`);
   try {
-    const { authToken, messageData, clientSocketId } = req.body || {};
+    const { messageData, clientSocketId } = req.body || {};
 
     if (!messageData) {
       console.error('[Process Message] ERROR: Missing messageData in request body');
       return res.status(400).json({ error: 'Missing `messageData` in request body.' });
     }
 
-    // Handle missing clientSocketId by falling back to direct auth token usage
-    let authTokenToUse;
-    let clientSocketId_safe = clientSocketId;
-    
-    if (!clientSocketId) {
-      console.warn('[Process Message] WARNING: Missing clientSocketId, attempting fallback to direct authToken');
-      console.log('[Process Message] Request body authToken present:', !!authToken);
-      
-      if (!authToken) {
-        console.error('[Process Message] ERROR: No clientSocketId and no fallback authToken provided');
-        return res.status(400).json({ error: 'Missing both `clientSocketId` and `authToken` in request body.' });
-      }
-      
-      // Use the provided auth token directly (fallback mode)
-      authTokenToUse = authToken;
-      console.log('[Process Message] Using fallback mode with provided authToken');
-    } else {
-      // Look up the client and use its stored auth token (normal mode)
-      const client = connectedClients.get(clientSocketId);
-      if (!client) {
-        console.error(`[Process Message] ERROR: Unknown clientSocketId: ${clientSocketId}`);
-        console.error('[Process Message] Available connected clients:', Array.from(connectedClients.keys()));
-        return res.status(400).json({ error: `Unknown clientSocketId: ${clientSocketId}` });
-      }
-      if (!client.authenticated || !client.authToken) {
-        console.error(`[Process Message] ERROR: Socket ${clientSocketId} not authenticated`);
-        console.error('[Process Message] Client state:', { authenticated: client.authenticated, hasAuthToken: !!client.authToken });
-        return res.status(401).json({ error: 'Socket not authenticated. Generate token first, then authenticate the socket.' });
-      }
-      
-      authTokenToUse = client.authToken;
-      console.log(`[Process Message] Using server-stored token for client ${clientSocketId}`);
-    }
+    // Always use the server-managed token
+    const authTokenToUse = await getValidServerTokenInternal();
+    console.log('[Process Message] Using server-managed token for all requests');
 
     // Map conversationId -> socketId for targeted webhook routing (only if we have a valid socket)
     try {
@@ -688,14 +774,34 @@ function broadcastWebhookUpdate(webhookMessage) {
   }
 }
 
-httpServer.listen(CONFIG.PORT, () => {
-  console.log(`🌐 Netomi HTTP Server listening on http://localhost:${CONFIG.PORT}`);
-  console.log(`🔌 Socket.IO enabled for real-time communication`);
-  console.log(`🔗 Webhook endpoint: http://localhost:${CONFIG.PORT}/webhook/netomi`);
-  console.log(`🧪 Test webhook: http://localhost:${CONFIG.PORT}/webhook/test`);
-  console.log(`📋 Webhook info: http://localhost:${CONFIG.PORT}/webhook/info`);
-  console.log(`🔐 Bearer Token: ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
-  console.log(`\n📝 For Netomi Team:`);
-  console.log(`   URL: http://localhost:${CONFIG.PORT}/webhook/netomi`);
-  console.log(`   Authorization: Bearer ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
-});
+// Initialize server token and start server
+async function startServer() {
+  try {
+    // Generate initial server token
+    console.log('[Server Startup] Generating initial server token...');
+    await generateServerToken();
+    
+    // Set up automatic token refresh
+    setupTokenRefresh();
+    
+    // Start the HTTP server
+    httpServer.listen(CONFIG.PORT, () => {
+      console.log(`🌐 Netomi HTTP Server listening on http://localhost:${CONFIG.PORT}`);
+      console.log(`🔌 Socket.IO enabled for real-time communication`);
+      console.log(`🔗 Webhook endpoint: http://localhost:${CONFIG.PORT}/webhook/netomi`);
+      console.log(`🧪 Test webhook: http://localhost:${CONFIG.PORT}/webhook/test`);
+      console.log(`📋 Webhook info: http://localhost:${CONFIG.PORT}/webhook/info`);
+      console.log(`🔐 Bearer Token: ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
+      console.log(`🔄 Server token auto-refresh: Every 23 hours`);
+      console.log(`\n📝 For Netomi Team:`);
+      console.log(`   URL: http://localhost:${CONFIG.PORT}/webhook/netomi`);
+      console.log(`   Authorization: Bearer ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
+    });
+  } catch (error) {
+    console.error('[Server Startup] Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
