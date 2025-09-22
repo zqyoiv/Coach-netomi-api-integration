@@ -560,7 +560,7 @@ app.get('/', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
 app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
-app.get('/netomi', (_req, res) => res.sendFile('index.html', { root: 'public' }));
+app.get('/netomi', (_req, res) => res.sendFile('netomi.html', { root: 'public' }));
 
 // Test endpoint to verify webhook endpoint is accessible
 app.get('/webhook/test', (req, res) => {
