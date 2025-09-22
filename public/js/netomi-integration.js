@@ -33,12 +33,12 @@ function getOrCreateConversationId() {
 }
 
 /**
- * Generate a new Netomi authentication token
+ * Fetch the current server-managed token
  * @returns {Promise<Object>} Token response object
  */
-async function generateNetomiToken() {
+async function fetchServerToken() {
     try {
-        console.log('[Netomi] Requesting new authentication token...');
+        console.log('[Netomi] Fetching server-managed token...');
         
         const response = await fetch('/api/netomi/generate-token');
         const result = await response.json();
@@ -92,7 +92,7 @@ async function generateNetomiToken() {
             throw new Error('Invalid response format from token endpoint');
         }
     } catch (error) {
-        console.error('[Netomi] Token generation failed:', error);
+        console.error('[Netomi] Token fetch failed:', error);
         
         // Update debug panel with error
         updateTokenDisplay(null, error.message);
@@ -112,7 +112,7 @@ function isTokenValid() {
 }
 
 /**
- * Get current valid token, generating a new one if needed
+ * Get current valid token, fetching from server if needed
  * @returns {Promise<string>} Valid authentication token
  */
 async function getValidToken() {
@@ -121,9 +121,9 @@ async function getValidToken() {
         return window.netomiAuthToken;
     }
     
-    console.log('[Netomi] Token expired or missing, generating new one...');
-    const tokenData = await generateNetomiToken();
-    return window.netomiAuthToken; // Return from window after generation
+    console.log('[Netomi] Token expired or missing, fetching from server...');
+    const tokenData = await fetchServerToken();
+    return window.netomiAuthToken; // Return from window after fetch
 }
 
 /**
@@ -183,10 +183,10 @@ function updateTokenDisplay(tokenData, error) {
  * @returns {Promise<Object>} Netomi API response
  */
 async function sendToNetomi(message, options = {}) {
-    // Always read token from window (same as index.html pattern)
-    const authToken = window.netomiAuthToken;
+    // Ensure we have a valid token (server-managed)
+    const authToken = await getValidToken();
     if (!authToken) {
-        throw new Error('No auth token available. Please generate a token first.');
+        throw new Error('No auth token available. Please ensure server is running.');
     }
     
     // Format message data EXACTLY like index.html (copied structure)
@@ -245,7 +245,7 @@ async function sendToNetomi(message, options = {}) {
     };
     
     console.log('[Netomi] Sending message:', message);
-    console.log('[Netomi] Using auth token from window.netomiAuthToken');
+    console.log('[Netomi] Using server-managed auth token');
     
     try {
         // Ensure socket is connected so webhook responses can be pushed in real-time
@@ -256,7 +256,6 @@ async function sendToNetomi(message, options = {}) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                authToken: authToken,
                 messageData: messageData,
                 // Always ack-only; webhook will be received via Socket.IO
                 clientSocketId: (window.netomiSocket && window.netomiSocket.id) ? window.netomiSocket.id : null
@@ -287,12 +286,12 @@ async function sendToNetomi(message, options = {}) {
 }
 
 /**
- * Test Netomi connection by generating a token
+ * Test Netomi connection by fetching server token
  * @returns {Promise<Object>} Test result
  */
 async function testNetomiConnection() {
     try {
-        const tokenData = await generateNetomiToken();
+        const tokenData = await fetchServerToken();
         return {
             success: true,
             message: 'Connection successful',
@@ -568,7 +567,7 @@ async function ensureSocketConnectedAndAuthenticated(timeoutMs = 3000) {
 
 // Export functions for use in other scripts
 window.NetomiIntegration = {
-    generateToken: generateNetomiToken,
+    generateToken: fetchServerToken,
     sendToNetomi,
     testConnection: testNetomiConnection,
     getCurrentToken: () => window.netomiAuthToken,
@@ -585,16 +584,16 @@ console.log('[NetomiIntegration] ✅ Object initialized and available globally')
 console.log('[Netomi] Initializing Socket.IO connection immediately...');
 initializeSocketConnection();
 
-// Auto-generate token when DOM is ready and debug panel is available
+// Auto-fetch token when DOM is ready and debug panel is available
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Netomi] DOM loaded, checking for auto-token generation...');
+    console.log('[Netomi] DOM loaded, checking for auto-token fetch...');
     
-    // Wait a bit for debug panel to initialize, then auto-generate token
+    // Wait a bit for debug panel to initialize, then auto-fetch token
     setTimeout(() => {
         if (window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled()) {
-            console.log('[Netomi] Auto-generating token on page load...');
-            generateNetomiToken().catch(error => {
-                console.warn('[Netomi] Auto token generation failed:', error);
+            console.log('[Netomi] Auto-fetching server token on page load...');
+            fetchServerToken().catch(error => {
+                console.warn('[Netomi] Auto token fetch failed:', error);
             });
         }
     }, 1000);
