@@ -1,9 +1,3 @@
-// Netomi API Node.js Starter (Express)
-// -------------------------------------------------------------
-// Now updated to support calling the Netomi `generate-token` API endpoint
-// for testing, using environment variables provided in .env.
-// -------------------------------------------------------------
-
 import 'dotenv/config';
 import express from 'express';
 import crypto from 'crypto';
@@ -90,29 +84,6 @@ async function fetchNetomiToken() {
     const txt = await resp.text();
     return { token: txt.trim() };
   }
-}
-
-
-function netomiHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${CONFIG.API_KEY}`,
-  };
-}
-
-async function netomiFetch(path, { method = 'POST', body } = {}) {
-  const url = new URL(path, CONFIG.BASE_URL).toString();
-  const res = await fetch(url, {
-    method,
-    headers: netomiHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Netomi API error: ${res.status} ${txt}`);
-  }
-  if (res.status === 204) return null;
-  return res.json();
 }
 
 // Generate token fetcher
@@ -585,9 +556,11 @@ app.post('/api/netomi/process-message', async (req, res) => {
 });
 
 
-app.get('/', (_req, res) => res.sendFile('index.html', { root: 'public' }));
+app.get('/', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
 app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
+
+app.get('/netomi', (_req, res) => res.sendFile('index.html', { root: 'public' }));
 
 // Test endpoint to verify webhook endpoint is accessible
 app.get('/webhook/test', (req, res) => {
