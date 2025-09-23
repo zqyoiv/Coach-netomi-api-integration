@@ -365,7 +365,7 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     }
     
     console.log('[Netomi Webhook] Payload response received.');
-    // console.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
+    console.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
     
     // Optional: Additional signature verification (if Netomi provides it)
     if (CONFIG.WEBHOOK_SECRET) {

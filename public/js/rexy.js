@@ -457,9 +457,17 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         
-        // Show full-screen 3D thinking overlay while waiting for webhook (guarded by debug flag)
+        // Track start time for response timing
+        window.thinkingAnimationStartTime = Date.now();
+        
+        // Show full-screen 3D thinking overlay after 2 seconds delay (guarded by debug flag)
         if (window.RexyGlobalState && window.RexyGlobalState.is3DOn && window.RexyGlobalState.is3DOn()) {
-            showThinkingOverlay();
+            window.thinkingAnimationTimeout = setTimeout(() => {
+                // Only show if typing indicator still exists (response hasn't arrived yet)
+                if (document.getElementById('typingIndicator')) {
+                    showThinkingOverlay();
+                }
+            }, 2000);
         }
         
         // Scroll to bottom
@@ -472,6 +480,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typingIndicator) {
             typingIndicator.remove();
         }
+        
+        // Clear the thinking animation timeout if response came back quickly
+        if (window.thinkingAnimationTimeout) {
+            clearTimeout(window.thinkingAnimationTimeout);
+            window.thinkingAnimationTimeout = null;
+        }
+        
+        // Calculate response time for debugging
+        if (window.thinkingAnimationStartTime) {
+            const responseTime = Date.now() - window.thinkingAnimationStartTime;
+            console.log(`[Rexy] Response received in ${responseTime}ms`);
+            window.thinkingAnimationStartTime = null;
+        }
+        
         // Hide full-screen 3D thinking overlay when typing indicator is removed
         hideThinkingOverlay();
     }
@@ -887,15 +909,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add welcome message
         setTimeout(() => {
             addMessage("Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!", false);
-            
-            // Show quick reply options
-            setTimeout(() => {
-                addQuickReplies([
-                    "Is this bag trending online?",
-                    "What are the reviews for the Teri?",
-                    "How can I style the Teri?"
-                ]);
-            }, 500);
         }, 1000);
     }, 500);
     
