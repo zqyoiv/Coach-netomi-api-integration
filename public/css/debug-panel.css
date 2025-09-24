@@ -2,7 +2,7 @@
 .debug-container {
     position: absolute;
     top: 6px;
-    right: 60px;
+    right: 100px;
     width: 32px;
     height: 32px;
     display: flex;
