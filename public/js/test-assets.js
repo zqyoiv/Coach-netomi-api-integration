@@ -147,6 +147,18 @@ function handleTestCommand(text, chatMessages, addMessage) {
         
         return true; // Command was handled
     }
+    // Check if it's an image carousel command
+    else if (text.trim().toLowerCase() === 'show-image-carousel') {
+        // Add user's image carousel command as text message
+        addMessage(text, true);
+        
+        // Show image carousel
+        setTimeout(() => {
+            testImageCarousel();
+        }, 500);
+        
+        return true; // Command was handled
+    }
     // Check if it's a 3D command
     else if (is3DCommand(text)) {
         const animationName = get3DName(text);
@@ -220,5 +232,47 @@ function testVideoCarousel() {
     }
 }
 
-// Make test function globally available for debugging
+// Function to test image carousel (for development/testing)
+function testImageCarousel() {
+    const chatMessages = document.querySelector('.chat-messages');
+    if (!chatMessages) {
+        console.error('Chat messages container not found');
+        return;
+    }
+
+    // Create sample image carousel data
+    const testImageCarouselData = {
+        carouselImageAspectRatio: "HORIZONTAL",
+        elements: [
+            {
+                title: "Coach Bag 1",
+                imageUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.png",
+                subtitle: "Premium leather shoulder bag",
+                buttons: []
+            },
+            {
+                title: "Coach Bag 2", 
+                imageUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_11.1PDP_Brandon_Teri_Shoulder_bag_CV933.png",
+                subtitle: "Classic design with modern appeal",
+                buttons: []
+            },
+            {
+                title: "Coach Bag 3",
+                imageUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Quala_Teri+Family_+CV935+IMBLK+CV934+IMBLK+CW309+IMBLK.png",
+                subtitle: "Versatile everyday companion",
+                buttons: []
+            }
+        ]
+    };
+
+    // Use the existing addCarouselMessage function if available
+    if (typeof window.addCarouselMessage === 'function') {
+        window.addCarouselMessage(testImageCarouselData);
+    } else {
+        console.error('addCarouselMessage function not found. Image carousel test failed.');
+    }
+}
+
+// Make test functions globally available for debugging
 window.testVideoCarousel = testVideoCarousel;
+window.testImageCarousel = testImageCarousel;

@@ -652,68 +652,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 carouselItem.appendChild(videoContainer);
                 // Skip content area for videos - no text or buttons
             } else if (element.imageUrl) {
-                // Regular image
+                // Regular image - no content area, clean image-only
+                carouselItem.classList.add('image-only-item');
+                
                 const img = document.createElement('img');
                 img.src = element.imageUrl;
                 img.alt = element.title || 'Product image';
                 img.className = 'carousel-image';
                 carouselItem.appendChild(img);
                 
-                // Content for regular images
-                const content = document.createElement('div');
-                content.className = 'carousel-content';
-                
-                if (element.title && element.title !== '--' && element.title.trim() !== '') {
-                    const title = document.createElement('div');
-                    title.className = 'carousel-title';
-                    title.textContent = element.title;
-                    content.appendChild(title);
-                }
-                
-                if (element.subtitle) {
-                    const subtitle = document.createElement('div');
-                    subtitle.className = 'carousel-subtitle';
-                    subtitle.textContent = element.subtitle;
-                    content.appendChild(subtitle);
-                }
-
-                // Optional description (index.html shows description if present and different)
-                if (element.description && element.description !== element.title) {
-                    const desc = document.createElement('div');
-                    desc.className = 'carousel-subtitle';
-                    desc.textContent = element.description;
-                    content.appendChild(desc);
-                }
-                
-                // Buttons
-                if (element.buttons && element.buttons.length > 0) {
-                    const buttonsContainer = document.createElement('div');
-                    buttonsContainer.className = 'carousel-buttons';
-                    
-                    element.buttons.forEach(button => {
-                        const btn = document.createElement('button');
-                        btn.className = 'carousel-button';
-                        btn.textContent = button.title;
-                        
-                        if (button.url) {
-                            btn.addEventListener('click', () => {
-                                window.open(button.url, '_blank');
-                            });
-                        }
-                        
-                        buttonsContainer.appendChild(btn);
-                    });
-                    
-                    content.appendChild(buttonsContainer);
-                }
-                
-                // Only append content if it has meaningful content
-                if (content.children.length > 0) {
-                    carouselItem.appendChild(content);
-                } else {
-                    // If no content, make this a clean image-only item
-                    carouselItem.classList.add('image-only-item');
-                }
+                // Skip content area for images - no text or buttons
             }
             carouselScroller.appendChild(carouselItem);
         });
