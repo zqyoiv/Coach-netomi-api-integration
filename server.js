@@ -3,6 +3,8 @@ import express from 'express';
 import crypto from 'crypto';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import fs from 'fs/promises';
+import path from 'path';
 
 const app = express();
 const httpServer = createServer(app);
@@ -179,6 +181,58 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
       pendingRequests.delete(requestId);
     }
     const txt = await res.text();
+    
+    // Check if this is an authentication failure
+    if (isAuthenticationFailure(res.status, txt)) {
+      console.log(`[Process Message] Authentication failure detected (${res.status}): ${txt}`);
+      
+      try {
+        // Regenerate token and retry once
+        const newToken = await handleAuthenticationFailure();
+        console.log('[Process Message] Retrying request with new token...');
+        
+        // Retry the request with new token (reuse same requestId for webhook tracking)
+        const retryRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'x-channel': CONFIG.CHANNEL,
+            'x-integration-channel': 'NETOMI_WEB_WIDGET',
+            'x-channel-ref-id': CONFIG.CHANNEL_REF_ID,
+            'Content-Type': 'application/json',
+            'x-virtual-agent-id': CONFIG.VIRTUAL_AGENT_ID,
+            'x-auth-token': newToken,
+          },
+          body: JSON.stringify(messageData),
+        });
+        
+        if (!retryRes.ok) {
+          const retryTxt = await retryRes.text();
+          throw new Error(`Process Message API error (retry): ${retryRes.status} ${retryTxt}`);
+        }
+        
+        console.log('[Process Message] Retry successful with new token');
+        
+        // Continue with successful response
+        const acknowledgment = await retryRes.json();
+        
+        if (!waitForWebhook) {
+          return { acknowledgment };
+        }
+        
+        try {
+          const webhookResponse = await webhookPromise;
+          return { acknowledgment, webhookResponse, requestId };
+        } catch (error) {
+          console.error(`[Process Message] Webhook timeout for request ${requestId}:`, error);
+          return { acknowledgment, webhookResponse: null, error: error.message, requestId };
+        }
+        
+      } catch (retryError) {
+        console.error('[Process Message] Token regeneration or retry failed:', retryError);
+        throw new Error(`Authentication failure and retry failed: ${txt}`);
+      }
+    }
+    
     throw new Error(`Process Message API error: ${res.status} ${txt}`);
   }
 
@@ -224,6 +278,90 @@ let serverAuthToken = null;
 let serverTokenExpiry = null;
 let tokenRefreshTimer = null;
 
+// Token storage configuration
+const TOKEN_STORAGE_FILE = path.join(process.cwd(), '.netomi-token.json');
+const TOKEN_EXPIRY_HOURS = 23; // Refresh token after 23 hours
+
+/**
+ * Read token data from persistent storage
+ * @returns {Promise<Object|null>} Token data or null if not found/invalid
+ */
+async function readTokenFromFile() {
+  try {
+    console.log('[Token Storage] Reading token from file:', TOKEN_STORAGE_FILE);
+    const data = await fs.readFile(TOKEN_STORAGE_FILE, 'utf8');
+    const tokenData = JSON.parse(data);
+    
+    console.log('[Token Storage] Token data loaded from file');
+    console.log('[Token Storage] Generated at:', new Date(tokenData.generatedAt).toISOString());
+    
+    return tokenData;
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.log('[Token Storage] No existing token file found');
+    } else {
+      console.error('[Token Storage] Error reading token file:', error.message);
+    }
+    return null;
+  }
+}
+
+/**
+ * Write token data to persistent storage
+ * @param {string} token - The authentication token
+ * @param {number} apiExpiresIn - Token expiry from API response (may be null)
+ * @returns {Promise<void>}
+ */
+async function writeTokenToFile(token, apiExpiresIn) {
+  try {
+    const now = Date.now();
+    // Always calculate our own 23-hour expiration, regardless of API response
+    const ourExpirationTime = now + (TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+    
+    const tokenData = {
+      token,
+      apiExpiresIn, // Store original API response for reference
+      generatedAt: now,
+      expiresAt: ourExpirationTime // Always set to 23 hours from now
+    };
+    
+    await fs.writeFile(TOKEN_STORAGE_FILE, JSON.stringify(tokenData, null, 2), 'utf8');
+    console.log('[Token Storage] Token saved to file:', TOKEN_STORAGE_FILE);
+    console.log('[Token Storage] Current timestamp:', now);
+    console.log('[Token Storage] Generated at:', new Date(now).toISOString());
+    console.log('[Token Storage] Our expiration (23h):', new Date(ourExpirationTime).toISOString());
+    if (apiExpiresIn) {
+      console.log('[Token Storage] API expiration:', apiExpiresIn, 'seconds');
+    }
+  } catch (error) {
+    console.error('[Token Storage] Error writing token file:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Check if stored token is still valid (within 23 hours)
+ * @param {Object} tokenData - Token data from file
+ * @returns {boolean} True if token is still valid
+ */
+function isStoredTokenValid(tokenData) {
+  if (!tokenData || !tokenData.token || !tokenData.generatedAt) {
+    return false;
+  }
+  
+  const now = Date.now();
+  const tokenAge = now - tokenData.generatedAt;
+  const maxAge = TOKEN_EXPIRY_HOURS * 60 * 60 * 1000; // 23 hours in milliseconds
+  
+  const isValid = tokenAge < maxAge;
+  const ageInHours = Math.round(tokenAge / (60 * 60 * 1000) * 10) / 10;
+  
+  console.log(`[Token Storage] Token age: ${ageInHours} hours (max: ${TOKEN_EXPIRY_HOURS} hours)`);
+  console.log(`[Token Storage] Token is ${isValid ? 'valid' : 'expired'}`);
+  
+  return isValid;
+}
+
 /**
  * Generate and store a new server-side token
  */
@@ -240,10 +378,15 @@ async function generateServerToken() {
       throw new Error('No token found in response');
     }
     
+    // Store in memory with our own 23-hour expiration
+    const now = Date.now();
     serverAuthToken = token;
-    serverTokenExpiry = expiresIn ? Date.now() + (expiresIn * 1000) : null;
+    serverTokenExpiry = now + (TOKEN_EXPIRY_HOURS * 60 * 60 * 1000); // Always 23 hours from now
     
-    console.log('[Server Token] Token generated successfully');
+    // Save to persistent storage
+    await writeTokenToFile(token, expiresIn);
+    
+    console.log('[Server Token] Token generated and saved successfully');
     console.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
     console.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
     
@@ -277,6 +420,43 @@ function getCurrentServerToken() {
 }
 
 /**
+ * Load token from persistent storage and set up in-memory variables
+ * @returns {Promise<boolean>} True if valid token was loaded, false otherwise
+ */
+async function loadServerTokenFromFile() {
+  try {
+    console.log('[Server Token] Loading token from persistent storage...');
+    const storedTokenData = await readTokenFromFile();
+    
+    if (!storedTokenData) {
+      console.log('[Server Token] No stored token found');
+      return false;
+    }
+    
+    if (!isStoredTokenValid(storedTokenData)) {
+      console.log('[Server Token] Stored token is expired, will generate new one');
+      return false;
+    }
+    
+    // Load valid token into memory
+    serverAuthToken = storedTokenData.token;
+    serverTokenExpiry = storedTokenData.expiresAt;
+    
+    console.log('[Server Token] Valid token loaded from storage');
+    console.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
+    console.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
+    
+    // Set up timer based on loaded token's expiration time
+    setupTokenRefresh(serverTokenExpiry);
+    
+    return true;
+  } catch (error) {
+    console.error('[Server Token] Error loading token from storage:', error);
+    return false;
+  }
+}
+
+/**
  * Get the current valid server token, generating a new one ONLY for server-side operations
  * This should NEVER be called by client-facing endpoints
  */
@@ -292,28 +472,142 @@ async function getValidServerTokenInternal() {
 }
 
 /**
- * Set up automatic token refresh every 23 hours
+ * Set up automatic token refresh based on token expiration time
+ * @param {number} customExpiresAt - Optional custom expiration time to calculate interval from
  */
-function setupTokenRefresh() {
+function setupTokenRefresh(customExpiresAt = null) {
   // Clear existing timer if any
   if (tokenRefreshTimer) {
     clearInterval(tokenRefreshTimer);
+    console.log('[Server Token] Cleared existing refresh timer');
   }
   
-  // Refresh every 23 hours (23 * 60 * 60 * 1000 ms)
-  const refreshInterval = 23 * 60 * 60 * 1000;
+  // Calculate refresh interval based on token expiration
+  const expiresAt = customExpiresAt || serverTokenExpiry;
+  const now = Date.now();
   
-  tokenRefreshTimer = setInterval(async () => {
+  if (!expiresAt) {
+    // Fallback to 23 hours if no expiration time available
+    const refreshInterval = 23 * 60 * 60 * 1000;
+    console.log('[Server Token] No expiration time available, using default 23-hour interval');
+    
+    tokenRefreshTimer = setInterval(async () => {
+      try {
+        console.log('[Server Token] Auto-refreshing token (default 23-hour cycle)...');
+        await generateServerToken();
+        console.log('[Server Token] Token auto-refresh completed');
+      } catch (error) {
+        console.error('[Server Token] Auto-refresh failed:', error);
+      }
+    }, refreshInterval);
+    
+    console.log('[Server Token] Auto-refresh timer set for default 23 hours');
+    return;
+  }
+  
+  // Calculate time until token expires
+  const timeUntilExpiry = expiresAt - now;
+  
+  if (timeUntilExpiry <= 0) {
+    // Token already expired, refresh immediately
+    console.log('[Server Token] Token already expired, refreshing immediately...');
+    generateServerToken().then(() => {
+      setupTokenRefresh(); // Restart timer with new token
+    }).catch(error => {
+      console.error('[Server Token] Immediate refresh failed:', error);
+      // Fallback to 23-hour timer
+      setupTokenRefresh(null);
+    });
+    return;
+  }
+  
+  // Set timer to refresh just before expiration (subtract 1 minute for safety)
+  const refreshDelay = Math.max(timeUntilExpiry - (60 * 1000), 60 * 1000); // Minimum 1 minute
+  const hoursUntilRefresh = refreshDelay / (60 * 60 * 1000);
+  
+  console.log(`[Server Token] Token expires at: ${new Date(expiresAt).toISOString()}`);
+  console.log(`[Server Token] Setting refresh timer for ${hoursUntilRefresh.toFixed(2)} hours`);
+  
+  tokenRefreshTimer = setTimeout(async () => {
     try {
-      console.log('[Server Token] Auto-refreshing token (23-hour cycle)...');
+      console.log('[Server Token] Auto-refreshing token (smart timing based on expiration)...');
       await generateServerToken();
-      console.log('[Server Token] Token auto-refresh completed');
+      console.log('[Server Token] Token auto-refresh completed, restarting timer...');
+      setupTokenRefresh(); // Restart timer with new token expiration
     } catch (error) {
       console.error('[Server Token] Auto-refresh failed:', error);
+      // Retry in 5 minutes
+      setTimeout(() => setupTokenRefresh(), 5 * 60 * 1000);
     }
-  }, refreshInterval);
+  }, refreshDelay);
+}
+
+/**
+ * Handle authentication failure by regenerating token and restarting timer
+ * @returns {Promise<string>} New authentication token
+ */
+async function handleAuthenticationFailure() {
+  try {
+    console.log('[Auth Failure] Authentication failed, regenerating token...');
+    
+    // Generate new token
+    await generateServerToken();
+    
+    // Restart the timer with new token expiration
+    setupTokenRefresh();
+    
+    console.log('[Auth Failure] Token regenerated and timer restarted successfully');
+    return serverAuthToken;
+  } catch (error) {
+    console.error('[Auth Failure] Failed to regenerate token:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if error response indicates authentication failure
+ * @param {number} statusCode - HTTP status code
+ * @param {string} responseText - Response text/body
+ * @returns {boolean} True if it's an authentication failure
+ */
+function isAuthenticationFailure(statusCode, responseText) {
+  // Check for common authentication failure indicators
+  if (statusCode === 401 || statusCode === 403) {
+    return true;
+  }
   
-  console.log('[Server Token] Auto-refresh timer set for every 23 hours');
+  // Check response text for auth-related keywords
+  const authKeywords = ['unauthorized', 'authentication', 'invalid token', 'expired token', 'access denied'];
+  const lowerResponseText = responseText.toLowerCase();
+  
+  return authKeywords.some(keyword => lowerResponseText.includes(keyword));
+}
+
+/**
+ * Initialize token system on server startup
+ * Loads existing token from file or generates new one if needed
+ */
+async function initializeTokenSystem() {
+  try {
+    console.log('[Server Token] Initializing token system...');
+    
+    // Try to load existing token from file
+    const tokenLoaded = await loadServerTokenFromFile();
+    
+    if (!tokenLoaded) {
+      // No valid token found, generate a new one
+      console.log('[Server Token] No valid stored token, generating new one...');
+      await generateServerToken();
+      // Set up automatic refresh after generating new token
+      setupTokenRefresh();
+    }
+    // Note: If token was loaded, setupTokenRefresh was already called in loadServerTokenFromFile
+    
+    console.log('[Server Token] Token system initialized successfully');
+  } catch (error) {
+    console.error('[Server Token] Failed to initialize token system:', error);
+    // Don't throw - server can still start, token generation will be attempted later
+  }
 }
 
 // ------------------------------
@@ -781,12 +1075,9 @@ function broadcastWebhookUpdate(webhookMessage) {
 // Initialize server token and start server
 async function startServer() {
   try {
-    // Generate initial server token
-    console.log('[Server Startup] Generating initial server token...');
-    await generateServerToken();
-    
-    // Set up automatic token refresh
-    setupTokenRefresh();
+    // Initialize token system (loads from file or generates new)
+    console.log('[Server Startup] Initializing token system...');
+    await initializeTokenSystem();
     
     // Start the HTTP server
     httpServer.listen(CONFIG.PORT, () => {
