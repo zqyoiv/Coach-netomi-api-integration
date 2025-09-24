@@ -440,6 +440,8 @@ function extractCarouselData(webhookResponse) {
                 carouselImageAspectRatio: att.carouselImageAspectRatio,
                 elements: att.elements.map(el => ({
                     imageUrl: el.imageUrl || el.image_url || null,
+                    videoUrl: el.videoUrl || null,
+                    thumbnailUrl: el.thumbnailUrl || null,
                     title: el.title || null,
                     subtitle: el.subtitle || null,
                     description: el.description || null,

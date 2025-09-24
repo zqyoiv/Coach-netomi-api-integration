@@ -1,13 +1,13 @@
 {
     "virtualAgentId": "19171206-ab3b-4f5d-bab6-bf81106902db",
     "channelRefId": "6296104b-b8f5-4828-a732-14d9c9ad8213",
-    "timestamp": 1758637588523,
+    "timestamp": 1758729242547,
     "ownerType": "BOT",
     "channel": "CHAT",
-    "requestId": "afd8c0fe-899a-4aac-a8fb-c6640323e379",
+    "requestId": "a16cbf47-42c8-4bdc-a60d-35f9719a7f22",
     "requestPayload": {
-      "conversationId": "chat-a16e3107-d7a6-44b1-b7c7-ed9729fddb87",
-      "requestId": "afd8c0fe-899a-4aac-a8fb-c6640323e379_res",
+      "conversationId": "chat-b92565d0-8c66-4eeb-8958-a63bb40fdd25",
+      "requestId": "a16cbf47-42c8-4bdc-a60d-35f9719a7f22_res",
       "integrationChannel": [
         {
           "type": "TEXT",
@@ -17,10 +17,10 @@
         }
       ],
       "messagePayload": {
-        "text": "when will the chalk teri come back and how much is it",
-        "messageId": "79a7e3ec-18a2-4f61-8394-9e9c52220ced",
+        "text": "show me some teri styling videos",
+        "messageId": "5d3dec01-6c27-4468-b24d-f15b8c65dccf",
         "label": "",
-        "timestamp": "1758637588502",
+        "timestamp": "1758729242526",
         "hideMessage": true
       },
       "userDetails": {
@@ -73,12 +73,12 @@
       "triggerType": "REQUEST"
     },
     "customFields": {
-      "CHUNK_INDEX": "14",
+      "CHUNK_INDEX": "16",
       "TRANSLATE_LANGUAGE": "en",
       "CHUNK_STATUS": "SUCCESS",
-      "INPUT_REQUEST_TIME": "1758637588523",
-      "FINAL_CHUNK_TIME": "1758637592390",
-      "FIRST_CHUNK_TIME": "1758637591002"
+      "INPUT_REQUEST_TIME": "1758729242547",
+      "FINAL_CHUNK_TIME": "1758729251985",
+      "FIRST_CHUNK_TIME": "1758729245945"
     },
     "attachments": [
       {
@@ -86,7 +86,7 @@
         "attachment": {
           "type": "ai.msg.domain.responses.core.Text",
           "text": "",
-          "timestamp": 1758637588523,
+          "timestamp": 1758729242547,
           "isReviewEnabled": false,
           "attachmentResponseType": "ANSWER_AI_RESPONSE",
           "properties": [
@@ -95,17 +95,54 @@
               "value": "true"
             }
           ],
-          "id": "ff1345ca-c135-4657-b9fb-c39853be949c",
+          "id": "04e324e6-817d-43e6-806a-e8c292cdd653",
           "isVariationsEnabled": false
         }
       },
       {
-        "type": "ai.msg.domain.responses.core.Image",
+        "type": "ai.msg.domain.responses.core.Text",
         "attachment": {
-          "type": "ai.msg.domain.responses.core.Image",
-          "title": "okay gif",
-          "timestamp": 1758637588523,
-          "largeImageUrl": "https://demo.netomi.com/images/Coach_stickers/okay.gif",
+          "type": "ai.msg.domain.responses.core.Text",
+          "text": "styling inspo? say less 👜✨ peep these teri vids for outfit ideas!",
+          "timestamp": 1758729242547,
+          "isReviewEnabled": false,
+          "attachmentResponseType": "ANSWER_AI_RESPONSE",
+          "properties": [
+            {
+              "name": "AGGREGATED_CHUNKS_RESPONSE",
+              "value": "true"
+            }
+          ],
+          "id": "067ba5de-1be1-4922-b070-c43d8878f952",
+          "isVariationsEnabled": false
+        }
+      },
+      {
+        "type": "ai.msg.domain.responses.core.Carousel",
+        "attachment": {
+          "type": "ai.msg.domain.responses.core.Carousel",
+          "timestamp": 1758729242547,
+          "elements": [
+            {
+              "title": "--",
+              "buttons": [],
+              "videoUrl": "https://demo.netomi.com/web/POC/Coach/Videos/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.MOV",
+              "thumbnailUrl": "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.png"
+            },
+            {
+              "title": "--",
+              "buttons": [],
+              "videoUrl": "https://demo.netomi.com/web/POC/Coach/Videos/FY25_11.1PDP_Brandon_Teri_Shoulder_bag_CV933.MOV",
+              "thumbnailUrl": "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_11.1PDP_Brandon_Teri_Shoulder_bag_CV933.png"
+            },
+            {
+              "title": "--",
+              "buttons": [],
+              "videoUrl": "https://demo.netomi.com/web/POC/Coach/Videos/FY25_1.1PDP_Quala_Teri+Family_+CV935+IMBLK+CV934+IMBLK+CW309+IMBLK.mp4",
+              "thumbnailUrl": "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Quala_Teri+Family_+CV935+IMBLK+CV934+IMBLK+CW309+IMBLK.png"
+            }
+          ],
+          "carouselImageAspectRatio": "HORIZONTAL",
           "isReviewEnabled": false,
           "attachmentResponseType": "ANSWER_AI_RESPONSE",
           "properties": [
@@ -120,8 +157,8 @@
         "type": "ai.msg.domain.responses.core.Text",
         "attachment": {
           "type": "ai.msg.domain.responses.core.Text",
-          "text": "rawr! that’s a Q for the real pros 🛍️",
-          "timestamp": 1758637588523,
+          "text": "wanna see more? or need charm recs next? 👀✨",
+          "timestamp": 1758729242547,
           "isReviewEnabled": false,
           "attachmentResponseType": "ANSWER_AI_RESPONSE",
           "properties": [
@@ -130,25 +167,7 @@
               "value": "true"
             }
           ],
-          "id": "78f27f0f-c19f-4f3f-bf66-d137d2facfe4",
-          "isVariationsEnabled": false
-        }
-      },
-      {
-        "type": "ai.msg.domain.responses.core.Text",
-        "attachment": {
-          "type": "ai.msg.domain.responses.core.Text",
-          "text": "check w an in-store coach expert — they got all the tea ☕️",
-          "timestamp": 1758637588523,
-          "isReviewEnabled": false,
-          "attachmentResponseType": "ANSWER_AI_RESPONSE",
-          "properties": [
-            {
-              "name": "AGGREGATED_CHUNKS_RESPONSE",
-              "value": "true"
-            }
-          ],
-          "id": "35338b94-3cfe-4283-b269-ce5d503dfad0",
+          "id": "fc821676-21f1-40bf-b866-0c5eb9ed4989",
           "isVariationsEnabled": false
         }
       },
@@ -157,10 +176,10 @@
         "attachment": {
           "type": "ai.msg.domain.responses.core.Text",
           "text": "",
-          "timestamp": 1758637588523,
+          "timestamp": 1758729242547,
           "isReviewEnabled": false,
           "attachmentResponseType": "INTENT_RESPONSE",
-          "tooltip": "Rephrased query : when will the chalk teri come back and how much is it\n",
+          "tooltip": "Rephrased query : show me some teri styling videos\n",
           "isVariationsEnabled": false
         }
       }

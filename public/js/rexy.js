@@ -621,64 +621,100 @@ document.addEventListener('DOMContentLoaded', function() {
             const carouselItem = document.createElement('div');
             carouselItem.className = 'carousel-item';
             
-            // Image
-            if (element.imageUrl) {
+            // Video or Image
+            if (element.videoUrl && element.thumbnailUrl) {
+                // Add video-only class to carousel item
+                carouselItem.classList.add('video-only-item');
+                
+                // Video thumbnail with play indicator - no content area
+                const videoContainer = document.createElement('div');
+                videoContainer.className = 'carousel-video-container video-only';
+                
+                const thumbnail = document.createElement('img');
+                thumbnail.src = element.thumbnailUrl;
+                thumbnail.alt = element.title || 'Video thumbnail';
+                thumbnail.className = 'carousel-image carousel-video-thumbnail';
+                
+                // Play button overlay
+                const playButton = document.createElement('div');
+                playButton.className = 'video-play-button';
+                playButton.innerHTML = '▶';
+                
+                videoContainer.appendChild(thumbnail);
+                videoContainer.appendChild(playButton);
+                
+                // Add click handler to open video overlay
+                videoContainer.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openVideoOverlay(element.videoUrl, element.title);
+                });
+                
+                carouselItem.appendChild(videoContainer);
+                // Skip content area for videos - no text or buttons
+            } else if (element.imageUrl) {
+                // Regular image
                 const img = document.createElement('img');
                 img.src = element.imageUrl;
                 img.alt = element.title || 'Product image';
                 img.className = 'carousel-image';
                 carouselItem.appendChild(img);
-            }
-            
-            // Content
-            const content = document.createElement('div');
-            content.className = 'carousel-content';
-            
-            if (element.title) {
-                const title = document.createElement('div');
-                title.className = 'carousel-title';
-                title.textContent = element.title;
-                content.appendChild(title);
-            }
-            
-            if (element.subtitle) {
-                const subtitle = document.createElement('div');
-                subtitle.className = 'carousel-subtitle';
-                subtitle.textContent = element.subtitle;
-                content.appendChild(subtitle);
-            }
+                
+                // Content for regular images
+                const content = document.createElement('div');
+                content.className = 'carousel-content';
+                
+                if (element.title && element.title !== '--' && element.title.trim() !== '') {
+                    const title = document.createElement('div');
+                    title.className = 'carousel-title';
+                    title.textContent = element.title;
+                    content.appendChild(title);
+                }
+                
+                if (element.subtitle) {
+                    const subtitle = document.createElement('div');
+                    subtitle.className = 'carousel-subtitle';
+                    subtitle.textContent = element.subtitle;
+                    content.appendChild(subtitle);
+                }
 
-            // Optional description (index.html shows description if present and different)
-            if (element.description && element.description !== element.title) {
-                const desc = document.createElement('div');
-                desc.className = 'carousel-subtitle';
-                desc.textContent = element.description;
-                content.appendChild(desc);
-            }
-            
-            // Buttons
-            if (element.buttons && element.buttons.length > 0) {
-                const buttonsContainer = document.createElement('div');
-                buttonsContainer.className = 'carousel-buttons';
+                // Optional description (index.html shows description if present and different)
+                if (element.description && element.description !== element.title) {
+                    const desc = document.createElement('div');
+                    desc.className = 'carousel-subtitle';
+                    desc.textContent = element.description;
+                    content.appendChild(desc);
+                }
                 
-                element.buttons.forEach(button => {
-                    const btn = document.createElement('button');
-                    btn.className = 'carousel-button';
-                    btn.textContent = button.title;
+                // Buttons
+                if (element.buttons && element.buttons.length > 0) {
+                    const buttonsContainer = document.createElement('div');
+                    buttonsContainer.className = 'carousel-buttons';
                     
-                    if (button.url) {
-                        btn.addEventListener('click', () => {
-                            window.open(button.url, '_blank');
-                        });
-                    }
+                    element.buttons.forEach(button => {
+                        const btn = document.createElement('button');
+                        btn.className = 'carousel-button';
+                        btn.textContent = button.title;
+                        
+                        if (button.url) {
+                            btn.addEventListener('click', () => {
+                                window.open(button.url, '_blank');
+                            });
+                        }
+                        
+                        buttonsContainer.appendChild(btn);
+                    });
                     
-                    buttonsContainer.appendChild(btn);
-                });
+                    content.appendChild(buttonsContainer);
+                }
                 
-                content.appendChild(buttonsContainer);
+                // Only append content if it has meaningful content
+                if (content.children.length > 0) {
+                    carouselItem.appendChild(content);
+                } else {
+                    // If no content, make this a clean image-only item
+                    carouselItem.classList.add('image-only-item');
+                }
             }
-            
-            carouselItem.appendChild(content);
             carouselScroller.appendChild(carouselItem);
         });
         
@@ -690,6 +726,112 @@ document.addEventListener('DOMContentLoaded', function() {
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+    
+    // Video overlay functions
+    function openVideoOverlay(videoUrl, title) {
+        // Check if overlay already exists
+        let overlay = document.getElementById('video-overlay');
+        
+        if (overlay) {
+            // If overlay exists, replace video
+            showVideoPlayer(overlay, videoUrl, title);
+        } else {
+            // Create new overlay
+            overlay = document.createElement('div');
+            overlay.className = 'video-overlay';
+            overlay.id = 'video-overlay';
+            
+            document.body.appendChild(overlay);
+            
+            // Show overlay with fade-in
+            setTimeout(() => {
+                overlay.classList.add('show');
+            }, 10);
+            
+            // Set up video player
+            showVideoPlayer(overlay, videoUrl, title);
+        }
+    }
+
+    function showVideoPlayer(overlay, videoUrl, title) {
+        // Clear existing content
+        overlay.innerHTML = '';
+        
+        // Create close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'video-close-btn';
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = function(e) {
+            e.stopPropagation();
+            closeVideoOverlay();
+        };
+        
+        // Create video container
+        const videoContainer = document.createElement('div');
+        videoContainer.className = 'video-player-container';
+        
+        // Create video element
+        const video = document.createElement('video');
+        video.className = 'video-player';
+        video.src = videoUrl;
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        
+        if (title) {
+            video.title = title;
+        }
+        
+        // Handle video errors
+        video.onerror = function() {
+            console.error('Video failed to load:', videoUrl);
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'video-error';
+            errorMsg.textContent = 'Unable to load video';
+            videoContainer.appendChild(errorMsg);
+        };
+        
+        videoContainer.appendChild(video);
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(videoContainer);
+        
+        // Close on overlay click (but not on video click)
+        overlay.onclick = function(e) {
+            if (e.target === overlay) {
+                closeVideoOverlay();
+            }
+        };
+        
+        // Prevent video click from closing overlay
+        video.onclick = function(e) {
+            e.stopPropagation();
+        };
+    }
+
+    function closeVideoOverlay() {
+        const overlay = document.getElementById('video-overlay');
+        if (overlay) {
+            // Pause video before closing
+            const video = overlay.querySelector('video');
+            if (video) {
+                video.pause();
+            }
+            
+            overlay.classList.remove('show');
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }
+
+    // Make video functions globally available
+    window.openVideoOverlay = openVideoOverlay;
+    window.closeVideoOverlay = closeVideoOverlay;
+    
+    // Make carousel function globally available for testing
+    window.addCarouselMessage = addCarouselMessage;
     
     // Event listeners
     sendButton.addEventListener('click', sendMessage);

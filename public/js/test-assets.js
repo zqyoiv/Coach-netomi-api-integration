@@ -135,6 +135,18 @@ function handleTestCommand(text, chatMessages, addMessage) {
         
         return true; // Command was handled
     }
+    // Check if it's a video carousel command
+    else if (text.trim().toLowerCase() === 'show-video-carousel') {
+        // Add user's video carousel command as text message
+        addMessage(text, true);
+        
+        // Show video carousel
+        setTimeout(() => {
+            testVideoCarousel();
+        }, 500);
+        
+        return true; // Command was handled
+    }
     // Check if it's a 3D command
     else if (is3DCommand(text)) {
         const animationName = get3DName(text);
@@ -166,3 +178,47 @@ function handleTestCommand(text, chatMessages, addMessage) {
     
     return false; // Command was not handled
 }
+
+// Function to test video carousel (for development/testing)
+function testVideoCarousel() {
+    const chatMessages = document.querySelector('.chat-messages');
+    if (!chatMessages) {
+        console.error('Chat messages container not found');
+        return;
+    }
+
+    // Create sample video carousel data
+    const testCarouselData = {
+        carouselImageAspectRatio: "HORIZONTAL",
+        elements: [
+            {
+                title: "--",
+                videoUrl: "https://demo.netomi.com/web/POC/Coach/Videos/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.MOV",
+                thumbnailUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.png",
+                buttons: []
+            },
+            {
+                title: "--",
+                videoUrl: "https://demo.netomi.com/web/POC/Coach/Videos/FY25_11.1PDP_Brandon_Teri_Shoulder_bag_CV933.MOV",
+                thumbnailUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_11.1PDP_Brandon_Teri_Shoulder_bag_CV933.png",
+                buttons: []
+            },
+            {
+                title: "--",
+                videoUrl: "https://demo.netomi.com/web/POC/Coach/Videos/FY25_1.1PDP_Quala_Teri+Family_+CV935+IMBLK+CV934+IMBLK+CW309+IMBLK.mp4",
+                thumbnailUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Quala_Teri+Family_+CV935+IMBLK+CV934+IMBLK+CW309+IMBLK.png",
+                buttons: []
+            }
+        ]
+    };
+
+    // Use the existing addCarouselMessage function if available
+    if (typeof window.addCarouselMessage === 'function') {
+        window.addCarouselMessage(testCarouselData);
+    } else {
+        console.error('addCarouselMessage function not found. Video carousel test failed.');
+    }
+}
+
+// Make test function globally available for debugging
+window.testVideoCarousel = testVideoCarousel;
