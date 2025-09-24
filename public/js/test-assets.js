@@ -159,6 +159,23 @@ function handleTestCommand(text, chatMessages, addMessage) {
         
         return true; // Command was handled
     }
+    // Check if it's a test single image command
+    else if (text.trim().toLowerCase() === 'show-single-image') {
+        // Add user's single image command as text message
+        addMessage(text, true);
+        
+        // Show single image in overlay
+        setTimeout(() => {
+            if (typeof window.openImageOverlay === 'function') {
+                window.openImageOverlay(
+                    'https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.png',
+                    'Coach Teri Shoulder Bag'
+                );
+            }
+        }, 500);
+        
+        return true; // Command was handled
+    }
     // Check if it's a 3D command
     else if (is3DCommand(text)) {
         const animationName = get3DName(text);
@@ -240,24 +257,24 @@ function testImageCarousel() {
         return;
     }
 
-    // Create sample image carousel data
+    // Create sample image carousel data (mix of titles to test both cases)
     const testImageCarouselData = {
         carouselImageAspectRatio: "HORIZONTAL",
         elements: [
             {
-                title: "Coach Bag 1",
+                title: "Coach Bag Collection",
                 imageUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Jimena_TeriShoulderbag_CV933_TypoCorrect.png",
                 subtitle: "Premium leather shoulder bag",
                 buttons: []
             },
             {
-                title: "Coach Bag 2", 
+                title: "--", // Test clean image-only display
                 imageUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_11.1PDP_Brandon_Teri_Shoulder_bag_CV933.png",
                 subtitle: "Classic design with modern appeal",
                 buttons: []
             },
             {
-                title: "Coach Bag 3",
+                title: "",  // Test empty title
                 imageUrl: "https://demo.netomi.com/web/POC/Coach/Thumbnails/FY25_1.1PDP_Quala_Teri+Family_+CV935+IMBLK+CV934+IMBLK+CW309+IMBLK.png",
                 subtitle: "Versatile everyday companion",
                 buttons: []

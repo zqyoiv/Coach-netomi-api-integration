@@ -659,6 +659,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 img.src = element.imageUrl;
                 img.alt = element.title || 'Product image';
                 img.className = 'carousel-image';
+                img.style.cursor = 'pointer';
+                
+                // Add click handler to open image overlay
+                img.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openImageOverlay(element.imageUrl, element.title || 'Image');
+                });
+                
                 carouselItem.appendChild(img);
                 
                 // Skip content area for images - no text or buttons
@@ -774,9 +782,98 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Make video functions globally available
+    // Image overlay functions (similar to photo overlay but for single images)
+    function openImageOverlay(imageUrl, title) {
+        // Check if overlay already exists
+        let overlay = document.getElementById('image-overlay');
+        
+        if (overlay) {
+            // If overlay exists, replace image
+            showImageViewer(overlay, imageUrl, title);
+        } else {
+            // Create new overlay
+            overlay = document.createElement('div');
+            overlay.className = 'photo-overlay'; // Reuse photo overlay styles
+            overlay.id = 'image-overlay';
+            
+            document.body.appendChild(overlay);
+            
+            // Show overlay with fade-in
+            setTimeout(() => {
+                overlay.classList.add('show');
+            }, 10);
+            
+            // Set up image viewer
+            showImageViewer(overlay, imageUrl, title);
+        }
+    }
+
+    function showImageViewer(overlay, imageUrl, title) {
+        // Clear existing content
+        overlay.innerHTML = '';
+        overlay.setAttribute('data-view', 'fullscreen');
+        
+        // Create close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'photo-close-btn';
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = function(e) {
+            e.stopPropagation();
+            closeImageOverlay();
+        };
+        
+        // Create fullscreen image
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = title;
+        img.className = 'fullscreen-photo'; // Reuse fullscreen photo styles
+        img.onclick = function(e) {
+            e.stopPropagation();
+            // Close on image click
+            closeImageOverlay();
+        };
+        
+        // Handle image errors
+        img.onerror = function() {
+            console.error('Image failed to load:', imageUrl);
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'image-error';
+            errorMsg.style.color = 'white';
+            errorMsg.style.textAlign = 'center';
+            errorMsg.style.padding = '20px';
+            errorMsg.style.fontSize = '16px';
+            errorMsg.textContent = 'Unable to load image';
+            overlay.appendChild(errorMsg);
+        };
+        
+        overlay.appendChild(closeBtn);
+        overlay.appendChild(img);
+        
+        // Close on overlay click (but not on image click)
+        overlay.onclick = function(e) {
+            if (e.target === overlay) {
+                closeImageOverlay();
+            }
+        };
+    }
+
+    function closeImageOverlay() {
+        const overlay = document.getElementById('image-overlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }
+
+    // Make video and image functions globally available
     window.openVideoOverlay = openVideoOverlay;
     window.closeVideoOverlay = closeVideoOverlay;
+    window.openImageOverlay = openImageOverlay;
+    window.closeImageOverlay = closeImageOverlay;
     
     // Make carousel function globally available for testing
     window.addCarouselMessage = addCarouselMessage;
