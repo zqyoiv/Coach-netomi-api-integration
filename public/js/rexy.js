@@ -192,12 +192,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Remove typing indicator handled in message handler
                     if (response && response.ok && response.data && response.data.webhookResponse) {
                         const webhookResponse = response.data.webhookResponse;
-                        const aiText = window.NetomiIntegration.extractAIResponseText ? 
-                                      window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
-                        if (aiText) {
+                        // Extract all AI response texts
+                        const allTexts = window.NetomiIntegration.extractAllAIResponseTexts ? 
+                                        window.NetomiIntegration.extractAllAIResponseTexts(webhookResponse) : [];
+                        
+                        if (allTexts.length > 0) {
                             removeTypingIndicator();
-                            addMessage(aiText, false);
+                            renderMultipleMessages(allTexts, 1200); // 1.2 second delay between messages
                         }
+                        
+                        // Extract and display image if available
+                        const imageData = window.NetomiIntegration.extractImageData ? 
+                                         window.NetomiIntegration.extractImageData(webhookResponse) : null;
+                        
+                        if (imageData) {
+                            console.log('[Rexy] Adding image from quick reply response:', imageData.imageUrl);
+                            addStickerStyleImage(imageData.imageUrl);
+                        }
+                        
                         const carouselData = window.NetomiIntegration.extractCarouselData ? 
                                            window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
                         if (carouselData) {
@@ -399,22 +411,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Remove typing indicator first
                     removeTypingIndicator();
                     
-                    // Extract AI response text
-                    const aiText = window.NetomiIntegration.extractAIResponseText ? 
-                                  window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
+                    // Extract all AI response texts
+                    const allTexts = window.NetomiIntegration.extractAllAIResponseTexts ? 
+                                    window.NetomiIntegration.extractAllAIResponseTexts(webhookResponse) : [];
                     
-                    if (aiText) {
-                        addMessage(aiText, false, false, { isHtml: stringLooksLikeHtml(aiText) });
-                        
-                        // Extract and display carousel if available
-                        const carouselData = window.NetomiIntegration.extractCarouselData ? 
-                                           window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
-                        
-                        if (carouselData) {
-                            addCarouselMessage(carouselData);
-                        }
-                    } else {
-                        // console.log('[Rexy] No AI text found, showing fallback message');
+                    if (allTexts.length > 0) {
+                        renderMultipleMessages(allTexts, 1200); // 1.2 second delay between messages
+                    }
+                    
+                    // Extract and display image if available
+                    const imageData = window.NetomiIntegration.extractImageData ? 
+                                     window.NetomiIntegration.extractImageData(webhookResponse) : null;
+                    
+                    if (imageData) {
+                        console.log('[Rexy] Adding image from immediate webhook response:', imageData.imageUrl);
+                        addStickerStyleImage(imageData.imageUrl);
+                    }
+                    
+                    // Extract and display carousel if available
+                    const carouselData = window.NetomiIntegration.extractCarouselData ? 
+                                       window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
+                    
+                    if (carouselData) {
+                        addCarouselMessage(carouselData);
+                    }
+                    
+                    if (allTexts.length === 0 && !imageData && !carouselData) {
+                        // console.log('[Rexy] No AI text, image, or carousel found, showing fallback message');
                         //addMessage("I received your message but couldn't generate a response. Please try again.", false);
                     }
                 } else {
@@ -498,12 +521,40 @@ document.addEventListener('DOMContentLoaded', function() {
         hideThinkingOverlay();
     }
 
+    // Helper function to randomly select a waiting animation
+    function getRandomWaitingAnimation() {
+        const animations = [
+            'Rexy_Thinking',
+            'Rexy_Receivephoto', 
+            'Rexy_Searching'
+        ];
+        const randomIndex = Math.floor(Math.random() * animations.length);
+        const selectedAnimation = animations[randomIndex];
+        console.log(`[Rexy] Selected random waiting animation: ${selectedAnimation}`);
+        return selectedAnimation;
+    }
+
+    // Helper function to render multiple text messages sequentially
+    function renderMultipleMessages(textMessages, delay = 1000) {
+        if (!textMessages || textMessages.length === 0) return;
+        
+        console.log(`[Rexy] Rendering ${textMessages.length} messages sequentially`);
+        
+        textMessages.forEach((messageData, index) => {
+            setTimeout(() => {
+                console.log(`[Rexy] Rendering message ${index + 1}:`, messageData.text);
+                addMessage(messageData.text, false, false, { isHtml: stringLooksLikeHtml(messageData.text) });
+            }, index * delay);
+        });
+    }
+
     // Show thinking Rexy animation overlay inside chat area
     function addThinkingRexy() {
         if (document.getElementById('thinking-rexy')) return;
+        const animationName = getRandomWaitingAnimation();
         const thinking = document.createElement('img');
-        thinking.src = 'image/3d/Rexy_Thinking.gif';
-        thinking.alt = 'Rexy thinking';
+        thinking.src = `image/3d/${animationName}.gif`;
+        thinking.alt = 'Rexy waiting';
         thinking.className = 'thinking-rexy';
         thinking.id = 'thinking-rexy';
         chatMessages.appendChild(thinking);
@@ -523,12 +574,15 @@ document.addEventListener('DOMContentLoaded', function() {
         overlay.className = 'rexy-3d-overlay';
         overlay.id = 'rexy-3d-overlay';
 
+        // Get random waiting animation
+        const animationName = getRandomWaitingAnimation();
+        
         // Try to use preloaded animation if available
-        const cached = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Thinking');
+        const cached = window.AssetPreloader && window.AssetPreloader.getAnimation(animationName);
         const gif = document.createElement('img');
         gif.className = 'rexy-3d-gif';
-        gif.alt = 'Rexy Thinking';
-        gif.src = cached ? cached.src : 'image/3d/Rexy_Thinking.gif';
+        gif.alt = 'Rexy Waiting';
+        gif.src = cached ? cached.src : `image/3d/${animationName}.gif`;
         gif.onerror = function() {
             // If loading fails, remove overlay
             hideThinkingOverlay();
@@ -802,6 +856,35 @@ document.addEventListener('DOMContentLoaded', function() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // Add sticker-style image message to chat (for webhook images)
+    function addStickerStyleImage(imageSrc) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const stickerImg = document.createElement('img');
+        stickerImg.src = imageSrc;
+        stickerImg.alt = 'Response image';
+        stickerImg.className = 'sticker';
+        stickerImg.onerror = function() {
+            // If image doesn't load, show error message instead
+            messageContent.innerHTML = '';
+            const messageBubble = document.createElement('div');
+            messageBubble.className = 'message-bubble bot-bubble';
+            messageBubble.textContent = 'Sorry, I couldn\'t load the image.';
+            messageContent.appendChild(messageBubble);
+        };
+        
+        messageContent.appendChild(stickerImg);
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     // Function to open single photo in fullscreen view
     function openSinglePhotoView(imageSrc) {
     // Create overlay
@@ -868,23 +951,34 @@ document.addEventListener('DOMContentLoaded', function() {
             // Remove typing indicator if it's still showing
             removeTypingIndicator();
             
-            // Extract AI response text
-            const aiText = window.NetomiIntegration.extractAIResponseText ? 
-                          window.NetomiIntegration.extractAIResponseText(webhookResponse) : null;
+            // Extract all AI response texts
+            const allTexts = window.NetomiIntegration.extractAllAIResponseTexts ? 
+                            window.NetomiIntegration.extractAllAIResponseTexts(webhookResponse) : [];
             
-            if (aiText) {
-                console.log('[Rexy] Adding AI response from real-time update:', aiText);
-                addMessage(aiText, false, false, { isHtml: stringLooksLikeHtml(aiText) });
-                
-                // Extract and display carousel if available
-                const carouselData = window.NetomiIntegration.extractCarouselData ? 
-                                   window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
-                
-                if (carouselData) {
-                    addCarouselMessage(carouselData);
-                }
-            } else {
-                // console.log('[Rexy] No AI text found in real-time update');
+            if (allTexts.length > 0) {
+                console.log(`[Rexy] Adding ${allTexts.length} AI responses from real-time update`);
+                renderMultipleMessages(allTexts, 1200); // 1.2 second delay between messages
+            }
+            
+            // Extract and display image if available
+            const imageData = window.NetomiIntegration.extractImageData ? 
+                             window.NetomiIntegration.extractImageData(webhookResponse) : null;
+            
+            if (imageData) {
+                console.log('[Rexy] Adding image from real-time update:', imageData.imageUrl);
+                addStickerStyleImage(imageData.imageUrl);
+            }
+            
+            // Extract and display carousel if available
+            const carouselData = window.NetomiIntegration.extractCarouselData ? 
+                               window.NetomiIntegration.extractCarouselData(webhookResponse) : null;
+            
+            if (carouselData) {
+                addCarouselMessage(carouselData);
+            }
+            
+            if (allTexts.length === 0 && !imageData && !carouselData) {
+                // console.log('[Rexy] No AI text, image, or carousel found in real-time update');
                 // addMessage("I received your message but couldn't generate a response. Please try again.", false);
             }
         };

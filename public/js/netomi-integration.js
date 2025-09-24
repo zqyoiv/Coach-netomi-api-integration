@@ -349,6 +349,79 @@ function extractAIResponseText(webhookResponse) {
 }
 
 /**
+ * Extract all AI response texts from Netomi webhook response
+ * @param {Object} webhookResponse - The webhook response from Netomi
+ * @returns {Array} Array of text messages (empty array if none found)
+ */
+function extractAllAIResponseTexts(webhookResponse) {
+    try {
+        if (!webhookResponse) return [];
+        
+        console.log('[Netomi] Extracting all AI texts from webhook response:', webhookResponse);
+        
+        const textMessages = [];
+        
+        // Check for attachments (Netomi AI responses)
+        if (webhookResponse.attachments && Array.isArray(webhookResponse.attachments)) {
+            for (const attachment of webhookResponse.attachments) {
+                // Look for Text attachments with actual text content and AI response type
+                if (attachment.type === 'ai.msg.domain.responses.core.Text' && 
+                    attachment.attachment && 
+                    attachment.attachment.text &&
+                    attachment.attachment.text.trim() !== '' &&
+                    attachment.attachment.attachmentResponseType === 'ANSWER_AI_RESPONSE') {
+                    
+                    console.log('[Netomi] Found AI text:', attachment.attachment.text);
+                    textMessages.push({
+                        text: attachment.attachment.text,
+                        timestamp: attachment.attachment.timestamp,
+                        id: attachment.attachment.id
+                    });
+                }
+            }
+        }
+        
+        console.log(`[Netomi] Found ${textMessages.length} AI text messages`);
+        return textMessages;
+    } catch (error) {
+        console.error('[Netomi] Error extracting all AI texts:', error);
+        return [];
+    }
+}
+
+/**
+ * Extract image data from Netomi webhook response
+ * @param {Object} webhookResponse - The webhook response from Netomi
+ * @returns {Object|null} Image data or null if not found
+ */
+function extractImageData(webhookResponse) {
+    try {
+        if (!webhookResponse || !webhookResponse.attachments) return null;
+
+        // Look for Image attachments
+        for (const attachment of webhookResponse.attachments) {
+            if (attachment.type === 'ai.msg.domain.responses.core.Image' &&
+                attachment.attachment &&
+                attachment.attachment.largeImageUrl) {
+                
+                console.log('[Netomi] Found image attachment:', attachment.attachment);
+                return {
+                    imageUrl: attachment.attachment.largeImageUrl,
+                    title: attachment.attachment.title || null,
+                    timestamp: attachment.attachment.timestamp
+                };
+            }
+        }
+
+        console.log('[Netomi] No image attachment found');
+        return null;
+    } catch (error) {
+        console.error('[Netomi] Error extracting image data:', error);
+        return null;
+    }
+}
+
+/**
  * Extract carousel data from Netomi webhook response
  * @param {Object} webhookResponse - The webhook response from Netomi
  * @returns {Object|null} Carousel data or null if not found
@@ -574,7 +647,9 @@ window.NetomiIntegration = {
     getTokenExpiry: () => window.netomiTokenExpiry,
     getConversationId: getOrCreateConversationId,
     extractAIResponseText,
+    extractAllAIResponseTexts,
     extractCarouselData,
+    extractImageData,
     initializeSocketConnection
 };
 

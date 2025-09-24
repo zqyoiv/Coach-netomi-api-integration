@@ -88,6 +88,7 @@ Result: Bot sends the drink sticker animation
 
 **Available animations** (located in `public/image/3d/`):
 - `3d-thinking` - Shows `Rexy_Thinking.gif` fullscreen overlay for 5 seconds
+- **Wait Animation**: When waiting for responses, randomly shows one of: `Rexy_Thinking.gif`, `Rexy_Receivephoto.gif`, or `Rexy_Searching.gif`
 - `3d-[any_animation_name]` - Looks for `Rexy_[animation_name].gif`
 
 **Example:**
