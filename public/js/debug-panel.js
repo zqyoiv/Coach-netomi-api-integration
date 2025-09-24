@@ -137,7 +137,7 @@ function initializeDebugPanelEvents() {
     netomiToggle.addEventListener('change', function() {
         window.RexyGlobalState.setNetomiEnabled(this.checked);
         if (this.checked && window.NetomiIntegration) {
-            window.NetomiIntegration.generateToken().catch(() => {});
+            window.NetomiIntegration.testConnection().catch(() => {});
         }
     });
 
@@ -251,24 +251,24 @@ function resetDebugSettings() {
     }
 }
 
-async function generateToken() {
+async function testConnection() {
     const button = document.getElementById('generateTokenButton');
     if (!button) return;
     
     const originalText = button.textContent;
-    button.textContent = 'Generating...';
+    button.textContent = 'Testing...';
     button.disabled = true;
     
     try {
         if (window.NetomiIntegration) {
-            await window.NetomiIntegration.generateToken();
-            button.textContent = '✅ Generated';
+            await window.NetomiIntegration.testConnection();
+            button.textContent = '✅ Connected';
         } else {
             throw new Error('NetomiIntegration not available');
         }
     } catch (error) {
         button.textContent = '❌ Failed';
-        console.error('[Debug] Token generation failed:', error);
+        console.error('[Debug] Connection test failed:', error);
     }
     
     setTimeout(() => {
@@ -277,24 +277,24 @@ async function generateToken() {
     }, 2000);
 }
 
-async function refreshToken() {
+async function refreshConnection() {
     const button = document.getElementById('refreshTokenButton');
     if (!button) return;
     
     const originalText = button.textContent;
-    button.textContent = 'Refreshing...';
+    button.textContent = 'Testing...';
     button.disabled = true;
     
     try {
         if (window.NetomiIntegration) {
-            await window.NetomiIntegration.generateToken(); // Generate new token
-            button.textContent = '✅ Refreshed';
+            await window.NetomiIntegration.testConnection(); // Test connection
+            button.textContent = '✅ Connected';
         } else {
             throw new Error('NetomiIntegration not available');
         }
     } catch (error) {
         button.textContent = '❌ Failed';
-        console.error('[Debug] Token refresh failed:', error);
+        console.error('[Debug] Connection test failed:', error);
     }
     
     setTimeout(() => {

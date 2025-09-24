@@ -469,10 +469,42 @@ app.get('/api/conversations', (req, res) => {
   });
 });
 
-// Get current server token (read-only, never generates new tokens on client request)
-app.get('/api/netomi/generate-token', async (_req, res) => {
+// Test server connection without exposing tokens
+app.get('/api/netomi/test-connection', async (_req, res) => {
   try {
-    const token = getCurrentServerToken(); // Changed to read-only function
+    const token = getCurrentServerToken();
+    
+    if (!token) {
+      console.log('[Server Connection] No valid token available');
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Server token not available',
+        message: 'Token refresh in progress, please retry' 
+      });
+    }
+    
+    console.log('[Server Connection] Server has valid token, connection OK');
+    return res.json({ 
+      success: true, 
+      message: 'Server connection OK',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('[Server Connection] Connection test error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Connection test failed',
+      message: error.message 
+    });
+  }
+});
+
+// Legacy endpoint - deprecated (tokens should not be exposed to client)
+app.get('/api/netomi/generate-token', async (_req, res) => {
+  console.warn('[DEPRECATED] /api/netomi/generate-token endpoint accessed - tokens should not be exposed to client');
+  
+  try {
+    const token = getCurrentServerToken();
     
     if (!token) {
       console.log('[Server Token] No valid token available for client, token refresh in progress');
@@ -483,15 +515,15 @@ app.get('/api/netomi/generate-token', async (_req, res) => {
       });
     }
     
-    const tokenData = {
-      payload: {
-        token: token,
-        expires_in: serverTokenExpiry ? Math.floor((serverTokenExpiry - Date.now()) / 1000) : null,
-        expiresAt: serverTokenExpiry
+    // Return connection status instead of actual token
+    console.log('[Server Token] Connection OK (legacy endpoint)');
+    return res.json({ 
+      ok: true, 
+      data: { 
+        status: 'connected',
+        message: 'Server connection OK - tokens are managed server-side'
       }
-    };
-    console.log('[Server Token] Returning current server token to client (read-only)');
-    return res.status(200).json({ ok: true, data: tokenData });
+    });
   } catch (err) {
     console.error('Server token fetch failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
@@ -628,24 +660,23 @@ io.on('connection', (socket) => {
     clientId: socket.id
   });
   
-  // Handle client authentication (when they have a token)
+  // Handle client info (no auth token needed from client)
   socket.on('authenticate', (data) => {
-    const { authToken, clientInfo } = data;
-    console.log(`[Socket.IO] Client ${socket.id} authenticating with token`);
+    const { clientInfo } = data;
+    console.log(`[Socket.IO] Client ${socket.id} sending client info`);
     
-    // Update client with auth info
+    // Update client with info (no auth token from client)
     connectedClients.set(socket.id, {
       socket,
-      authToken,
       clientInfo,
-      authenticated: true,
+      authenticated: true, // Server manages auth, client is always "authenticated"
       connectedAt: Date.now()
     });
     
     // Send confirmation
     socket.emit('authenticated', {
       success: true,
-      message: 'Socket.IO connection authenticated',
+      message: 'Socket.IO connection established',
       clientId: socket.id
     });
   });
