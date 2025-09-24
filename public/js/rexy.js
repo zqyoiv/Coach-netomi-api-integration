@@ -33,6 +33,46 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     
+    // Function to show welcome GIF in center of chat
+    function showWelcomeGif() {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message welcome-gif-message';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content welcome-gif-content';
+        
+        // Try to get cached welcome animation first
+        const cachedWelcome = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Welcome');
+        
+        const welcomeImg = document.createElement('img');
+        
+        if (cachedWelcome) {
+            // Use cached image
+            welcomeImg.src = cachedWelcome.src;
+            console.log('🚀 Using cached welcome GIF');
+        } else {
+            // Fallback to loading image normally
+            welcomeImg.src = 'image/3d/Rexy_Welcome.gif';
+            console.log('⏳ Loading welcome GIF from server');
+        }
+        
+        welcomeImg.alt = 'Rexy Welcome';
+        welcomeImg.className = 'welcome-gif';
+        welcomeImg.onerror = function() {
+            // If welcome GIF doesn't exist, fallback to hi sticker
+            console.warn('Welcome GIF not found, falling back to hi sticker');
+            welcomeImg.src = 'image/stickers/hi.gif';
+            welcomeImg.className = 'sticker';
+        };
+        
+        messageContent.appendChild(welcomeImg);
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     // Function to add a message to the chat
     function addMessage(text, isUser = true, isSticker = false, options = {}) {
         const isHtml = options && options.isHtml === true;
@@ -284,10 +324,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add walking Rexy immediately
         addWalkingRexy();
         
-        // Show sticker, welcome message and options together 1 second after page load
+        // Show welcome GIF, welcome message and options together 1 second after page load
         setTimeout(() => {
-            // Add sticker first
-            addMessage("", false, true);
+            // Add welcome GIF first
+            showWelcomeGif();
             
             // Add welcome message
             addMessage("Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!", false);
@@ -875,8 +915,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openImageOverlay = openImageOverlay;
     window.closeImageOverlay = closeImageOverlay;
     
-    // Make carousel function globally available for testing
+    // Make carousel and welcome functions globally available for testing
     window.addCarouselMessage = addCarouselMessage;
+    window.showWelcomeGif = showWelcomeGif;
     
     // Event listeners
     sendButton.addEventListener('click', sendMessage);
@@ -1184,8 +1225,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the welcome chat sequence
     setTimeout(() => {
         console.log('[Rexy] Starting initial chat sequence...');
-        // Add sticker first
-        addMessage("", false, true);
+        // Add welcome GIF first
+        showWelcomeGif();
         
         // Add welcome message
         setTimeout(() => {

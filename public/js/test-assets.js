@@ -176,6 +176,20 @@ function handleTestCommand(text, chatMessages, addMessage) {
         
         return true; // Command was handled
     }
+    // Check if it's a welcome GIF command
+    else if (text.trim().toLowerCase() === 'show-welcome') {
+        // Add user's welcome command as text message
+        addMessage(text, true);
+        
+        // Show welcome GIF
+        setTimeout(() => {
+            if (typeof window.showWelcomeGif === 'function') {
+                window.showWelcomeGif();
+            }
+        }, 500);
+        
+        return true; // Command was handled
+    }
     // Check if it's a 3D command
     else if (is3DCommand(text)) {
         const animationName = get3DName(text);
