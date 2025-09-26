@@ -888,6 +888,11 @@ app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
 app.get('/netomi', (_req, res) => res.sendFile('netomi.html', { root: 'public' }));
 
+// Test endpoint to trigger connection error overlay
+app.get('/test-disconnect', (_req, res) => {
+  res.redirect('/rexy?test_disconnect=true');
+});
+
 // Test endpoint to verify webhook endpoint is accessible
 app.get('/webhook/test', (req, res) => {
   res.json({

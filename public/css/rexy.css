@@ -294,6 +294,38 @@ body {
     }
 }
 
+/* Connection Error Overlay */
+.connection-error-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(238, 226, 215, 0.5); /* Half-transparent beige */
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-message-container {
+    background-color: rgba(238, 226, 215, 0.9);
+    padding: 20px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    max-width: 300px;
+    text-align: center;
+}
+
+.error-message {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    line-height: 1.4;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
 /* CSS Custom Properties for Dynamic Viewport */
 :root {
     --vh: 1vh;

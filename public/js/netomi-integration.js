@@ -432,6 +432,9 @@ function initializeSocketConnection() {
     window.netomiSocket.on('connect', () => {
         console.log(`[Netomi] Socket.IO connected: ${window.netomiSocket.id}`);
         
+        // Hide connection error overlay when successfully connected
+        hideConnectionErrorOverlay();
+        
         // Send client info (no auth token needed)
         console.log('[Netomi] Sending client info...');
         window.netomiSocket.emit('authenticate', {
@@ -478,6 +481,10 @@ function initializeSocketConnection() {
     
     window.netomiSocket.on('disconnect', (reason) => {
         console.log(`[Netomi] Socket.IO disconnected: ${reason}`);
+        // Show overlay for transport errors or ping timeouts (long inactivity)
+        if (reason === 'transport close' || reason === 'ping timeout' || reason === 'transport error') {
+            showConnectionErrorOverlay();
+        }
         // On ping timeout or transport close, try reconnecting
         if (window.netomiSocket && !window.netomiSocket.connected) {
             try { window.netomiSocket.connect(); } catch {}
@@ -486,6 +493,10 @@ function initializeSocketConnection() {
     
     window.netomiSocket.on('connect_error', (error) => {
         console.error('[Netomi] Socket.IO connection error:', error);
+        // Show connection error overlay for websocket errors
+        if (error && (error.type === 'TransportError' || error.message.includes('websocket'))) {
+            showConnectionErrorOverlay();
+        }
     });
 }
 
@@ -554,6 +565,28 @@ async function ensureSocketConnectedAndAuthenticated(timeoutMs = 3000) {
     }
 }
 
+/**
+ * Show the connection error overlay
+ */
+function showConnectionErrorOverlay() {
+    const overlay = document.getElementById('connectionErrorOverlay');
+    if (overlay) {
+        overlay.style.display = 'flex';
+        console.log('[Netomi] Connection error overlay shown');
+    }
+}
+
+/**
+ * Hide the connection error overlay
+ */
+function hideConnectionErrorOverlay() {
+    const overlay = document.getElementById('connectionErrorOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+        console.log('[Netomi] Connection error overlay hidden');
+    }
+}
+
 // Export functions for use in other scripts
 window.NetomiIntegration = {
     testConnection: testNetomiConnection,
@@ -563,7 +596,9 @@ window.NetomiIntegration = {
     extractAllAIResponseTexts,
     extractCarouselData,
     extractImageData,
-    initializeSocketConnection
+    initializeSocketConnection,
+    showConnectionErrorOverlay,
+    hideConnectionErrorOverlay
 };
 
 console.log('[NetomiIntegration] ✅ Object initialized and available globally');

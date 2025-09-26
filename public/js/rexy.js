@@ -26,6 +26,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function initializeChat() {
         console.log('[Rexy] 🚀 Initializing chat with dependencies loaded');
         
+        // Check for test disconnect parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('test_disconnect') === 'true') {
+            console.log('[Rexy] Test disconnect parameter detected, showing connection error overlay');
+            setTimeout(() => {
+                if (window.NetomiIntegration && window.NetomiIntegration.showConnectionErrorOverlay) {
+                    window.NetomiIntegration.showConnectionErrorOverlay();
+                }
+            }, 1000); // Delay to ensure page is fully loaded
+        }
+        
         // Listen for Netomi state changes from debug panel
         if (window.RexyGlobalState) {
             window.RexyGlobalState.addListener(function(netomiEnabled) {
