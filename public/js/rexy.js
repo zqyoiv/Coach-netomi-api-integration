@@ -523,16 +523,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 3D thinking overlay functions are now handled by AnimationManager
     
-    // Add carousel message
+    // Add grid message (formerly carousel) - full width layout
     function addCarouselMessage(carouselData) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message bot-message';
+        messageDiv.className = 'message bot-message full-width-grid-message';
         
         const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
+        messageContent.className = 'message-content full-width-grid-content';
         
         const carouselContainer = document.createElement('div');
-        carouselContainer.className = 'carousel-container';
+        carouselContainer.className = 'carousel-container full-width-grid-container';
         
         const carouselScroller = document.createElement('div');
         carouselScroller.className = 'carousel-scroller';
