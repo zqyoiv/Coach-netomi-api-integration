@@ -8,7 +8,7 @@ const ANIMATION_CONFIG = {
     THINKING_ANIMATION_DELAY_MS: 5000,             // 5 seconds delay before showing overlay
     THINKING_OVERLAY_FADE_OUT_MS: 300,             // 300ms fade-out duration
     THINKING_OVERLAY_FADE_IN_MS: 10,               // 10ms fade-in delay
-    MINIMUM_CHATS_FOR_ANIMATION: 4,                // Require 3+ user messages before showing animations
+    MINIMUM_CHATS_FOR_ANIMATION: 3,                // Require 3+ user messages before showing animations
     
     // Element IDs and Selectors
     TYPING_INDICATOR_ID: 'typingIndicator',

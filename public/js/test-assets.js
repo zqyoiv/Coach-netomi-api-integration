@@ -29,20 +29,10 @@ function sendStickerMessage(stickerName, chatMessages) {
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     
-    // Try to get cached sticker first
-    const cachedSticker = window.AssetPreloader && window.AssetPreloader.getSticker(stickerName);
-    
+    // Sticker preloading removed - load directly
     const stickerImg = document.createElement('img');
-    
-    if (cachedSticker) {
-        // Use cached image
-        stickerImg.src = cachedSticker.src;
-        console.log(`🚀 Using cached sticker: ${stickerName}`);
-    } else {
-        // Fallback to loading image normally
-        stickerImg.src = `image/stickers/${stickerName}.gif`;
-        console.log(`⏳ Loading sticker from server: ${stickerName}`);
-    }
+    stickerImg.src = `image/stickers/${stickerName}.gif`;
+    console.log(`⏳ Loading sticker from server: ${stickerName}`);
     
     stickerImg.alt = stickerName;
     stickerImg.className = 'sticker';
