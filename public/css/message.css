@@ -90,19 +90,6 @@
     height: auto;
     object-fit: contain;
     border-radius: 8px;
-    /* Add subtle animation effect */
-    animation: welcomeGifEntrance 1s ease-out;
-}
-
-@keyframes welcomeGifEntrance {
-    0% {
-        opacity: 0;
-        transform: scale(0.8) translateY(20px);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
 }
 
 /* Quick Reply Options */
