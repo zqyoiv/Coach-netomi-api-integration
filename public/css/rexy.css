@@ -288,10 +288,7 @@ body {
         font-size: 12px;
     }
     
-    /* Adjust debug button position for mobile */
-    .debug-container {
-        right: 85px;
-    }
+    /* Debug button removed - no longer needed */
 }
 
 /* Connection Error Overlay */

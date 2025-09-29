@@ -85,27 +85,25 @@ class AnimationManager {
         // Track start time for response timing
         this.thinkingAnimationStartTime = Date.now();
         
-        // Show full-screen 3D thinking overlay after configured delay (with new conditions)
-        if (window.RexyGlobalState && window.RexyGlobalState.is3DOn && window.RexyGlobalState.is3DOn()) {
-            // Only show 3D animation if user has sent minimum required messages
-            if (this.userChatCount >= ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION) {
-                // Show animation based on configured probability
-                const showAnimation = Math.random() < ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY;
-                console.log(`[AnimationManager] 3D Animation decision: userChatCount=${this.userChatCount}, showAnimation=${showAnimation}`);
-                
-                if (showAnimation) {
-                    this.thinkingAnimationTimeout = setTimeout(() => {
-                        // Only show if typing indicator still exists (response hasn't arrived yet)
-                        if (document.getElementById(ANIMATION_CONFIG.TYPING_INDICATOR_ID)) {
-                            this.showThinkingOverlay();
-                        }
-                    }, ANIMATION_CONFIG.THINKING_ANIMATION_DELAY_MS);
-                } else {
-                    console.log(`[AnimationManager] 3D Animation skipped due to ${Math.round(ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY * 100)}% probability`);
-                }
+        // Show full-screen 3D thinking overlay after configured delay (3D animations always enabled)
+        // Only show 3D animation if user has sent minimum required messages
+        if (this.userChatCount >= ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION) {
+            // Show animation based on configured probability
+            const showAnimation = Math.random() < ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY;
+            console.log(`[AnimationManager] 3D Animation decision: userChatCount=${this.userChatCount}, showAnimation=${showAnimation}`);
+            
+            if (showAnimation) {
+                this.thinkingAnimationTimeout = setTimeout(() => {
+                    // Only show if typing indicator still exists (response hasn't arrived yet)
+                    if (document.getElementById(ANIMATION_CONFIG.TYPING_INDICATOR_ID)) {
+                        this.showThinkingOverlay();
+                    }
+                }, ANIMATION_CONFIG.THINKING_ANIMATION_DELAY_MS);
             } else {
-                console.log(`[AnimationManager] 3D Animation skipped - need ${ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION}+ chats (current: ${this.userChatCount})`);
+                console.log(`[AnimationManager] 3D Animation skipped due to ${Math.round(ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY * 100)}% probability`);
             }
+        } else {
+            console.log(`[AnimationManager] 3D Animation skipped - need ${ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION}+ chats (current: ${this.userChatCount})`);
         }
     }
 

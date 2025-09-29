@@ -1,7 +1,6 @@
 // Chat functionality for Rexy interface
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[Rexy] DOM loaded, checking dependencies...');
-    console.log('[Rexy] window.RexyGlobalState:', !!window.RexyGlobalState);
     console.log('[Rexy] window.NetomiIntegration:', !!window.NetomiIntegration);
     
     const chatInput = document.querySelector('.chat-input');
@@ -10,9 +9,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Animation logic is now handled by AnimationManager
     
+    // Global state removed - Netomi and 3D animations are always enabled
+    
     // Wait for dependencies to load if they're not ready yet
     function waitForDependencies() {
-        if (!window.RexyGlobalState || !window.NetomiIntegration) {
+        if (!window.NetomiIntegration) {
             console.log('[Rexy] Dependencies not ready, waiting 100ms...');
             setTimeout(waitForDependencies, 100);
             return;
@@ -39,12 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 1000); // Delay to ensure page is fully loaded
         }
         
-        // Listen for Netomi state changes from debug panel
-        if (window.RexyGlobalState) {
-            window.RexyGlobalState.addListener(function(netomiEnabled) {
-                console.log(`[Rexy] Received state change notification: Netomi ${netomiEnabled ? 'ENABLED' : 'DISABLED'}`);
-            });
-        }
+        // Netomi and 3D animations are always enabled - no state management needed
     
     // Function to show welcome GIF in center of chat
     function showWelcomeGif() {
@@ -231,9 +227,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add user message bubble immediately
         addMessage(text, true);
 
-        // If Netomi integration is enabled, send as a process-message like normal input
-        const isNetomiEnabled = window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled();
-        if (isNetomiEnabled && window.NetomiIntegration) {
+        // Netomi integration is always enabled - send as a process-message like normal input
+        if (window.NetomiIntegration) {
             // Show typing indicator and route to Netomi
             addTypingIndicator();
             window.NetomiIntegration.sendToNetomi(text)
@@ -369,12 +364,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Handle text message responses (only if no images were sent)
             if (text && (!selectedImages || selectedImages.length === 0)) {
-                // Check if Netomi integration is enabled
-                const isNetomiEnabled = window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled();
                 
-                console.log(`[Rexy] Netomi integration status: ${isNetomiEnabled ? 'ENABLED' : 'DISABLED'}`);
-                
-                if (isNetomiEnabled && window.NetomiIntegration) {
+                if (window.NetomiIntegration) {
                     // Send to Netomi API
                     console.log('[Rexy] Sending message to Netomi API');
                     try {

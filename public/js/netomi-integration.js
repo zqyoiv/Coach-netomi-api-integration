@@ -48,62 +48,18 @@ async function testServerConnection() {
             throw new Error(result.error || `HTTP ${response.status}`);
         }
         
-        // Update debug panel if available
-        updateConnectionDisplay(result);
         
         return result;
     } catch (error) {
         console.error('[Netomi] Server connection test failed:', error);
-        
-        // Update debug panel with error
-        updateConnectionDisplay(null, error.message);
-        
+                
         throw error;
     }
 }
 
 // Client-side token management removed - tokens are handled server-side only
 
-/**
- * Update the debug panel with connection information
- * @param {Object} connectionData - Connection test response data
- * @param {string} error - Error message if connection test failed
- */
-function updateConnectionDisplay(connectionData, error) {
-    // Update connection section in debug panel
-    const tokenSection = document.getElementById('debugTokenSection');
-    if (!tokenSection) return;
-    
-    const tokenDisplay = document.getElementById('debugTokenDisplay');
-    const tokenStatus = document.getElementById('debugTokenStatus');
-    const tokenExpiry = document.getElementById('debugTokenExpiry');
-    
-    if (error) {
-        if (tokenStatus) {
-            tokenStatus.textContent = 'Error';
-            tokenStatus.className = 'info-value error';
-        }
-        if (tokenDisplay) {
-            tokenDisplay.textContent = `Error: ${error}`;
-            tokenDisplay.className = 'info-value error';
-        }
-        if (tokenExpiry) {
-            tokenExpiry.textContent = 'N/A';
-        }
-    } else if (connectionData) {
-        if (tokenStatus) {
-            tokenStatus.textContent = connectionData.success ? 'Connected' : 'Failed';
-            tokenStatus.className = connectionData.success ? 'info-value success' : 'info-value error';
-        }
-        if (tokenDisplay) {
-            tokenDisplay.textContent = 'Server-managed';
-            tokenDisplay.className = 'info-value';
-        }
-        if (tokenExpiry) {
-            tokenExpiry.textContent = 'Server-managed';
-        }
-    }
-}
+// Debug panel update function removed - no longer needed
 
 /**
  * Send a message to Netomi API (following index.html pattern exactly)
@@ -607,17 +563,15 @@ console.log('[NetomiIntegration] ✅ Object initialized and available globally')
 console.log('[Netomi] Initializing Socket.IO connection immediately...');
 initializeSocketConnection();
 
-// Auto-test connection when DOM is ready and debug panel is available
+// Auto-test connection when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[Netomi] DOM loaded, checking for auto-connection test...');
     
-    // Wait a bit for debug panel to initialize, then test connection
+    // Test connection after page load (Netomi integration is always enabled)
     setTimeout(() => {
-        if (window.RexyGlobalState && window.RexyGlobalState.isNetomiEnabled()) {
-            console.log('[Netomi] Auto-testing server connection on page load...');
-            testServerConnection().catch(error => {
-                console.warn('[Netomi] Auto connection test failed:', error);
-            });
-        }
+        console.log('[Netomi] Auto-testing server connection on page load...');
+        testServerConnection().catch(error => {
+            console.warn('[Netomi] Auto connection test failed:', error);
+        });
     }, 1000);
 });
