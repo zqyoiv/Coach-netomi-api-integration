@@ -4,8 +4,10 @@
 // ===== ANIMATION CONFIGURATION CONSTANTS =====
 const ANIMATION_CONFIG = {
     // 3D Thinking Animation Settings
+    // shows up after 3 chat msg with 50% probability
+    // delay is 3 seconds
     THINKING_ANIMATION_PROBABILITY: 0.5,           // 50% chance to show animation
-    THINKING_ANIMATION_DELAY_MS: 5000,             // 5 seconds delay before showing overlay
+    THINKING_ANIMATION_DELAY_MS: 3000,             // 3 seconds delay before showing overlay
     THINKING_OVERLAY_FADE_OUT_MS: 300,             // 300ms fade-out duration
     THINKING_OVERLAY_FADE_IN_MS: 10,               // 10ms fade-in delay
     MINIMUM_CHATS_FOR_ANIMATION: 3,                // Require 3+ user messages before showing animations
@@ -31,7 +33,12 @@ const ANIMATION_CONFIG = {
     WATCH_REEL_ANIMATION_PATH: 'image/3d/Rexy_Watchreel.gif',
     WATCH_REEL_CLASS_NAME: 'rexy-watch-reel',
     WATCH_REEL_SIZE_PX: 400,                       // 400px width
-    WATCH_REEL_OPACITY: 1.0                        // Full opacity
+    WATCH_REEL_OPACITY: 1.0,                       // Full opacity
+    
+    // Typing Dots Animation Settings
+    TYPING_DOTS_ANIMATION_DURATION_MS: 1400,       // 1.4 seconds for full cycle
+    TYPING_DOTS_DELAY_BETWEEN_DOTS_MS: 200,        // 200ms delay between each dot
+    TYPING_DOTS_PAUSE_BETWEEN_CYCLES_MS: 600       // 600ms pause between animation cycles
 };
 
 class AnimationManager {
