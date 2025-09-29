@@ -74,9 +74,9 @@ body {
 }
   
 .rexy-avatar {
-    width: 60px;
+    width: 55px;
     object-fit: cover;        
-    object-position: -4px 13px;
+    object-position: 5px 15px;
     display: block; 
 }
 
