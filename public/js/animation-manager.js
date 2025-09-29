@@ -4,13 +4,17 @@
 // ===== ANIMATION CONFIGURATION CONSTANTS =====
 const ANIMATION_CONFIG = {
     // 3D Thinking Animation Settings
-    // shows up after 3 chat msg with 50% probability
-    // delay is 3 seconds
     THINKING_ANIMATION_PROBABILITY: 0.5,           // 50% chance to show animation
     THINKING_ANIMATION_DELAY_MS: 3000,             // 3 seconds delay before showing overlay
+    THINKING_ANIMATION_FORCE_DURATION_MS: null,    // Force duration for debugging (null = disabled, number = force duration)
     THINKING_OVERLAY_FADE_OUT_MS: 300,             // 300ms fade-out duration
     THINKING_OVERLAY_FADE_IN_MS: 10,               // 10ms fade-in delay
     MINIMUM_CHATS_FOR_ANIMATION: 3,                // Require 3+ user messages before showing animations
+    
+    // 3D Overlay Size Constraints
+    THINKING_OVERLAY_MAX_WIDTH_VW: 90,              // 90% of viewport width
+    THINKING_OVERLAY_MAX_HEIGHT_VH: 90,             // 90% of viewport height
+    THINKING_OVERLAY_PADDING_PX: 20,                // 20px padding from screen edges
     
     // Element IDs and Selectors
     TYPING_INDICATOR_ID: 'typingIndicator',
@@ -26,7 +30,7 @@ const ANIMATION_CONFIG = {
         'Rexy_Receivephoto', 
         'Rexy_Searching'
     ],
-    
+
     // Watch Reel Animation Settings
     WATCH_REEL_DURATION_MS: 5000,                  // 5 seconds display duration
     WATCH_REEL_FADE_OUT_MS: 300,                   // 300ms fade-out duration
@@ -46,6 +50,7 @@ class AnimationManager {
         this.userChatCount = 0;
         this.thinkingAnimationStartTime = null;
         this.thinkingAnimationTimeout = null;
+        this.thinkingAnimationForceTimeout = null;
         
         console.log('[AnimationManager] Initialized');
     }
@@ -132,6 +137,12 @@ class AnimationManager {
             this.thinkingAnimationTimeout = null;
         }
         
+        // Clear the force duration timeout for debugging
+        if (this.thinkingAnimationForceTimeout) {
+            clearTimeout(this.thinkingAnimationForceTimeout);
+            this.thinkingAnimationForceTimeout = null;
+        }
+        
         // Calculate response time for debugging
         if (this.thinkingAnimationStartTime) {
             const responseTime = Date.now() - this.thinkingAnimationStartTime;
@@ -195,6 +206,14 @@ class AnimationManager {
         document.body.appendChild(overlay);
         // fade-in
         setTimeout(() => overlay.classList.add('show'), ANIMATION_CONFIG.THINKING_OVERLAY_FADE_IN_MS);
+        
+        // Set force duration timeout for debugging if enabled
+        if (ANIMATION_CONFIG.THINKING_ANIMATION_FORCE_DURATION_MS !== null) {
+            this.thinkingAnimationForceTimeout = setTimeout(() => {
+                console.log(`[AnimationManager] 🐛 DEBUG: Force hiding thinking animation after ${ANIMATION_CONFIG.THINKING_ANIMATION_FORCE_DURATION_MS}ms`);
+                this.hideThinkingOverlay();
+            }, ANIMATION_CONFIG.THINKING_ANIMATION_FORCE_DURATION_MS);
+        }
     }
 
     /**
@@ -302,6 +321,7 @@ class AnimationManager {
         }, ANIMATION_CONFIG.WATCH_REEL_FADE_OUT_MS);
     }
 
+
     // ===== Utility Methods =====
     
     /**
@@ -328,6 +348,27 @@ class AnimationManager {
     forceHideThinkingOverlay() {
         this.hideThinkingOverlay();
     }
+
+    /**
+     * Set force duration for debugging
+     * @param {number|null} durationMs - Duration in milliseconds, or null to disable
+     */
+    setForceDuration(durationMs) {
+        ANIMATION_CONFIG.THINKING_ANIMATION_FORCE_DURATION_MS = durationMs;
+        console.log(`[AnimationManager] 🐛 DEBUG: Force duration set to ${durationMs}ms`);
+    }
+
+    /**
+     * Test thinking animation with force duration
+     * @param {number} durationMs - Duration to test in milliseconds
+     */
+    testThinkingAnimation(durationMs) {
+        console.log(`[AnimationManager] 🧪 TESTING: Starting thinking animation with ${durationMs}ms force duration`);
+        this.setForceDuration(durationMs);
+        this.forceShowThinkingOverlay();
+    }
+
+    
 }
 
 // Create global instance

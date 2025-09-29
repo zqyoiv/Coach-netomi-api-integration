@@ -159,6 +159,8 @@
     z-index: 1000;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .rexy-3d-overlay.show {
@@ -166,6 +168,10 @@
 }
 
 .rexy-3d-gif {
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
     object-fit: contain;
 }
 
