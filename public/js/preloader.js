@@ -14,28 +14,33 @@ class AssetPreloader {
 
     // Initialize preloading
     async init() {        
-         // Define 3D animations to preload
-         const animations = [
+         // Define welcome animation first (highest priority)
+         const welcomeAnimation = ['Rexy_Welcome.gif'];
+         
+         // Define other 3D animations to preload after welcome
+         const otherAnimations = [
             'Rexy_Check.gif',
             'Rexy_Receivephoto.gif',
             'Rexy_Searching.gif',
             'Rexy_Thinking.gif',
             // 'Rexy_Walk.gif', // Deprecated - walking animation removed
-            'Rexy_Watchreel.gif',
-            'Rexy_Welcome.gif'
+            'Rexy_Watchreel.gif'
         ];
 
         // Calculate total assets
-        this.totalCount = animations.length;
+        this.totalCount = welcomeAnimation.length + otherAnimations.length;
         
-        // Start preloading 3D animations
-        const promises = [
-            this.preloadAnimations(animations)
-        ];
-
         try {
-            await Promise.all(promises);
+            // First, load welcome animation with highest priority
+            console.log('🎬 Preloading welcome animation first...');
+            await this.preloadAnimations(welcomeAnimation);
+            console.log('✅ Welcome animation preloaded!');
+            
+            // Then load other animations
+            console.log('📦 Preloading other animations...');
+            await this.preloadAnimations(otherAnimations);
             console.log('✅ All 3D animations preloaded successfully!');
+            
             if (this.onComplete) this.onComplete();
         } catch (error) {
             console.warn('⚠️ Some assets failed to preload:', error);
@@ -95,6 +100,11 @@ class AssetPreloader {
     // Check if animation is cached
     isAnimationCached(name) {
         return this.cache.animations.has(name);
+    }
+
+    // Check if welcome animation is specifically loaded (high priority check)
+    isWelcomeAnimationReady() {
+        return this.cache.animations.has('Rexy_Welcome');
     }
 
     // Get cache status
