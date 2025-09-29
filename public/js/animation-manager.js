@@ -23,7 +23,15 @@ const ANIMATION_CONFIG = {
         'Rexy_Thinking',
         'Rexy_Receivephoto', 
         'Rexy_Searching'
-    ]
+    ],
+    
+    // Watch Reel Animation Settings
+    WATCH_REEL_DURATION_MS: 5000,                  // 5 seconds display duration
+    WATCH_REEL_FADE_OUT_MS: 300,                   // 300ms fade-out duration
+    WATCH_REEL_ANIMATION_PATH: 'image/3d/Rexy_Watchreel.gif',
+    WATCH_REEL_CLASS_NAME: 'rexy-watch-reel',
+    WATCH_REEL_SIZE_PX: 400,                       // 400px width
+    WATCH_REEL_OPACITY: 1.0                        // Full opacity
 };
 
 class AnimationManager {
@@ -226,6 +234,65 @@ class AnimationManager {
         };
         
         messageContent.appendChild(welcomeImg);
+    }
+
+    // ===== Watch Reel Animation Methods =====
+    
+    /**
+     * Add Rexy watch reel animation to video overlay
+     * Shows for configured duration then fades out automatically
+     * @param {HTMLElement} overlay - The video overlay element to add watch reel to
+     */
+    addWatchReelToVideoOverlay(overlay) {
+        if (!overlay) {
+            console.warn('[AnimationManager] No overlay provided for watch reel');
+            return;
+        }
+
+        // Create Rexy watch reel element
+        const rexyWatchReel = document.createElement('img');
+        rexyWatchReel.className = ANIMATION_CONFIG.WATCH_REEL_CLASS_NAME;
+        rexyWatchReel.alt = 'Rexy watching video';
+        
+        // Try to use preloaded animation if available
+        const cachedWatchReel = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Watchreel');
+        rexyWatchReel.src = cachedWatchReel ? cachedWatchReel.src : ANIMATION_CONFIG.WATCH_REEL_ANIMATION_PATH;
+        
+        // Handle loading errors gracefully
+        rexyWatchReel.onerror = () => {
+            console.warn('[AnimationManager] Failed to load Rexy watch reel animation');
+            rexyWatchReel.style.display = 'none';
+        };
+        
+        // Add to overlay
+        overlay.appendChild(rexyWatchReel);
+        
+        // Auto fade out after configured duration
+        setTimeout(() => {
+            this._fadeOutWatchReel(rexyWatchReel);
+        }, ANIMATION_CONFIG.WATCH_REEL_DURATION_MS);
+        
+        console.log(`[AnimationManager] Watch reel added, will fade out in ${ANIMATION_CONFIG.WATCH_REEL_DURATION_MS}ms`);
+    }
+
+    /**
+     * Fade out and remove watch reel animation
+     * @param {HTMLElement} watchReelElement - The watch reel element to fade out
+     * @private
+     */
+    _fadeOutWatchReel(watchReelElement) {
+        if (!watchReelElement || !watchReelElement.parentNode) return;
+        
+        // Start fade out
+        watchReelElement.style.opacity = '0';
+        
+        // Remove from DOM after fade animation completes
+        setTimeout(() => {
+            if (watchReelElement && watchReelElement.parentNode) {
+                watchReelElement.remove();
+                console.log('[AnimationManager] Watch reel faded out and removed');
+            }
+        }, ANIMATION_CONFIG.WATCH_REEL_FADE_OUT_MS);
     }
 
     // ===== Utility Methods =====

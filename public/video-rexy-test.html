@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Video Rexy Test</title>
+    <link rel="stylesheet" href="css/message.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .video-test-item {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .video-test-item:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .video-thumbnail {
+            width: 120px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #ddd;
+        }
+        .video-info {
+            flex: 1;
+        }
+        .video-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .video-description {
+            color: #666;
+            font-size: 14px;
+        }
+        .note {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .note h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎬 Video Rexy Watch Reel Test</h1>
+        <p>Test that Rexy watch reel GIF appears in bottom right corner when video opens in fullscreen mode</p>
+        
+        <div class="note">
+            <h3>🎯 What to Test:</h3>
+            <ul>
+                <li>Click any video below to open it in fullscreen mode</li>
+                <li>Look for Rexy watch reel GIF in the <strong>bottom right corner</strong></li>
+                <li>Verify Rexy animation plays while video is open</li>
+                <li>Check that Rexy disappears when video is closed</li>
+            </ul>
+        </div>
+        
+        <h3>Test Videos:</h3>
+        
+        <!-- Test Video 1 -->
+        <div class="video-test-item" onclick="testVideo1()">
+            <img src="image/example-photo/photo1.png" alt="Test Video 1" class="video-thumbnail">
+            <div class="video-info">
+                <div class="video-title">📹 Sample MP4 Video</div>
+                <div class="video-description">Local MP4 video file (if available)</div>
+            </div>
+        </div>
+        
+        <!-- Test Video 2 -->
+        <div class="video-test-item" onclick="testVideo2()">
+            <img src="image/example-photo/photo2.png" alt="Test Video 2" class="video-thumbnail">
+            <div class="video-info">
+                <div class="video-title">🎥 Big Buck Bunny Sample</div>
+                <div class="video-description">Online test video from Blender Foundation</div>
+            </div>
+        </div>
+        
+        <!-- Test Video 3 -->
+        <div class="video-test-item" onclick="testVideo3()">
+            <img src="image/example-photo/photo3.png" alt="Test Video 3" class="video-thumbnail">
+            <div class="video-info">
+                <div class="video-title">🐰 Another Test Video</div>
+                <div class="video-description">Alternative test video source</div>
+            </div>
+        </div>
+        
+        <div class="note">
+            <h3>🔍 Expected Behavior:</h3>
+            <ol>
+                <li><strong>Video Opens:</strong> Fullscreen overlay appears with video player</li>
+                <li><strong>Rexy Appears:</strong> Large watch reel GIF shows in bottom right (300px size, 90% opacity)</li>
+                <li><strong>Rexy Animates:</strong> GIF plays for exactly 5 seconds</li>
+                <li><strong>Tight Positioning:</strong> Right edge aligned with screen edge (no padding), 20px from bottom</li>
+                <li><strong>Auto Fade-out:</strong> After 5 seconds, Rexy fades out over 0.3s and disappears</li>
+                <li><strong>Non-intrusive:</strong> No pointer events, doesn't interfere with video controls</li>
+                <li><strong>Clean Exit:</strong> Video continues playing after Rexy disappears</li>
+            </ol>
+        </div>
+        
+        <button onclick="testRexyPreload()" style="margin: 10px 5px 0 0; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">🎬 Test Rexy Preload Status</button>
+        <button onclick="clearOverlays()" style="margin: 10px 0 0 0; padding: 10px 15px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">❌ Clear All Overlays</button>
+        <button onclick="startRexyTimer()" style="margin: 10px 0 0 0; padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">⏱️ Start 5s Timer Test</button>
+        <button onclick="testAnimationManager()" style="margin: 10px 0 0 0; padding: 10px 15px; background: #6f42c1; color: white; border: none; border-radius: 5px; cursor: pointer;">🎛️ Test AnimationManager</button>
+        
+        <div id="timerDisplay" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: 'Courier New', monospace; font-weight: bold; display: none;">
+            ⏱️ Rexy Timer: <span id="countdown">5</span>s remaining
+        </div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="js/preloader.js"></script>
+    <script src="js/rexy.js"></script>
+    <script>
+        function testVideo1() {
+            console.log('🧪 Testing local MP4 video...');
+            // Try local video first, fallback to online if not available
+            const localVideo = 'image/example-photo/photo4.mp4';
+            openVideoOverlay(localVideo, 'Local Test Video');
+        }
+        
+        function testVideo2() {
+            console.log('🧪 Testing Big Buck Bunny video...');
+            // Use a reliable test video
+            const onlineVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+            openVideoOverlay(onlineVideo, 'Big Buck Bunny Test Video');
+        }
+        
+        function testVideo3() {
+            console.log('🧪 Testing alternative video...');
+            // Alternative test video
+            const altVideo = 'https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4';
+            openVideoOverlay(altVideo, 'Alternative Test Video');
+        }
+        
+        function testRexyPreload() {
+            console.log('🧪 Testing Rexy watch reel preload status...');
+            if (window.AssetPreloader) {
+                const isLoaded = window.AssetPreloader.isAnimationCached('Rexy_Watchreel');
+                const status = window.AssetPreloader.getCacheStatus();
+                
+                alert(`Rexy Watch Reel Status:
+                
+🎬 Cached: ${isLoaded ? 'YES ✅' : 'NO ❌'}
+📦 Total Animations Loaded: ${status.animations}
+📊 Overall Progress: ${status.loaded}/${status.totalAssets}
+
+${isLoaded ? 'Ready to show in video overlay!' : 'Still loading... Try again in a moment.'}`);
+            } else {
+                alert('❌ AssetPreloader not available');
+            }
+        }
+        
+        function clearOverlays() {
+            console.log('🧹 Clearing all overlays...');
+            // Close video overlay if open
+            if (window.closeVideoOverlay) {
+                closeVideoOverlay();
+            }
+            
+            // Remove any stray overlays
+            const overlays = document.querySelectorAll('.video-overlay, .photo-overlay, .rexy-3d-overlay');
+            overlays.forEach(overlay => overlay.remove());
+            
+            // Hide timer display
+            document.getElementById('timerDisplay').style.display = 'none';
+            
+            console.log('✅ Overlays cleared');
+        }
+        
+        function startRexyTimer() {
+            console.log('⏱️ Starting 5-second Rexy timer simulation...');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const countdown = document.getElementById('countdown');
+            
+            timerDisplay.style.display = 'block';
+            let timeLeft = 5;
+            countdown.textContent = timeLeft;
+            
+            const timer = setInterval(() => {
+                timeLeft--;
+                countdown.textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    timerDisplay.innerHTML = '✅ Rexy should have faded out now!';
+                    setTimeout(() => {
+                        timerDisplay.style.display = 'none';
+                    }, 2000);
+                }
+            }, 1000);
+        }
+        
+        function testAnimationManager() {
+            console.log('🎛️ Testing AnimationManager functionality...');
+            if (window.AnimationManager) {
+                console.log('✅ AnimationManager is available');
+                
+                // Test watch reel method exists
+                if (typeof window.AnimationManager.addWatchReelToVideoOverlay === 'function') {
+                    console.log('✅ addWatchReelToVideoOverlay method found');
+                    
+                    // Get animation constants
+                    if (typeof ANIMATION_CONFIG !== 'undefined') {
+                        console.log('✅ ANIMATION_CONFIG available');
+                        console.log('📊 Watch Reel Config:', {
+                            duration: ANIMATION_CONFIG.WATCH_REEL_DURATION_MS + 'ms',
+                            fadeOut: ANIMATION_CONFIG.WATCH_REEL_FADE_OUT_MS + 'ms',
+                            size: ANIMATION_CONFIG.WATCH_REEL_SIZE_PX + 'px',
+                            opacity: ANIMATION_CONFIG.WATCH_REEL_OPACITY,
+                            className: ANIMATION_CONFIG.WATCH_REEL_CLASS_NAME,
+                            path: ANIMATION_CONFIG.WATCH_REEL_ANIMATION_PATH
+                        });
+                    } else {
+                        console.warn('❌ ANIMATION_CONFIG not available');
+                    }
+                    
+                    alert('🎛️ AnimationManager Test Results:\n\n✅ AnimationManager: Available\n✅ Watch Reel Method: Found\n✅ Configuration: Loaded\n\n🎬 Now test a video to see the refactored watch reel!');
+                } else {
+                    console.error('❌ addWatchReelToVideoOverlay method not found');
+                    alert('❌ AnimationManager method missing!');
+                }
+            } else {
+                console.error('❌ AnimationManager not available');
+                alert('❌ AnimationManager not found! Check if animation-manager.js is loaded.');
+            }
+        }
+        
+        // Add some helpful console logging
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 Video Rexy Test page loaded');
+            console.log('🎬 Available functions: testVideo1(), testVideo2(), testVideo3()');
+            console.log('🔍 Use testRexyPreload() to check animation status');
+            console.log('🧹 Use clearOverlays() to clean up');
+            console.log('🎛️ Use testAnimationManager() to test refactored logic');
+            
+            // Check if required functions are available
+            if (typeof openVideoOverlay === 'undefined') {
+                console.warn('⚠️ openVideoOverlay function not found - rexy.js may not be loaded');
+            } else {
+                console.log('✅ Video overlay functions available');
+            }
+        });
+    </script>
+</body>
+</html>

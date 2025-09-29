@@ -671,6 +671,13 @@ document.addEventListener('DOMContentLoaded', function() {
         overlay.appendChild(closeBtn);
         overlay.appendChild(videoContainer);
         
+        // Add Rexy watch reel using AnimationManager
+        if (window.AnimationManager) {
+            window.AnimationManager.addWatchReelToVideoOverlay(overlay);
+        } else {
+            console.warn('[Rexy] AnimationManager not available for watch reel');
+        }
+        
         // Close on overlay click (but not on video click)
         overlay.onclick = function(e) {
             if (e.target === overlay) {

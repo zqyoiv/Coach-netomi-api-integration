@@ -19,12 +19,11 @@ class AssetPreloader {
          
          // Define other 3D animations to preload after welcome
          const otherAnimations = [
+            'Rexy_Watchreel.gif',
             'Rexy_Check.gif',
             'Rexy_Receivephoto.gif',
             'Rexy_Searching.gif',
-            'Rexy_Thinking.gif',
-            // 'Rexy_Walk.gif', // Deprecated - walking animation removed
-            'Rexy_Watchreel.gif'
+            'Rexy_Thinking.gif',            
         ];
 
         // Calculate total assets

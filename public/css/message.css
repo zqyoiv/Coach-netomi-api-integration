@@ -499,3 +499,18 @@
     background-color: rgba(255, 0, 0, 0.8);
     border-radius: 8px;
 }
+
+/* Rexy Watch Reel Animation in Video Overlay */
+.rexy-watch-reel {
+    position: absolute;
+    bottom: 0;
+    right: -100px;
+    width: 400px;
+    height: auto;
+    object-fit: contain;
+    z-index: 2002;
+    pointer-events: none;
+    opacity: 1;
+    border-radius: 8px;
+    transition: opacity 0.3s ease;
+}
