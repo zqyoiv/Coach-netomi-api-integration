@@ -84,11 +84,23 @@ document.addEventListener('DOMContentLoaded', function() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+
     // Function to add a message to the chat
     function addMessage(text, isUser = true, isSticker = false, options = {}) {
         const isHtml = options && options.isHtml === true;
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        
+        // Track message events with GTM Manager
+        if (isUser) {
+            if (window.GTMManager) {
+                window.GTMManager.trackUserMessage(text, isSticker);
+            }
+        } else {
+            if (window.GTMManager) {
+                window.GTMManager.trackBotResponse(text, isHtml);
+            }
+        }
         
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
@@ -217,6 +229,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to handle quick reply selection
     function handleQuickReply(text, buttonElement) {
+        // Track quick reply selection with GTM Manager
+        if (window.GTMManager) {
+            window.GTMManager.trackQuickReply(text);
+        }
+        
         // Hide walking Rexy when user makes a choice
         hideWalkingRexy();
         
@@ -997,8 +1014,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle image selection
     function handleImageSelection(files) {
+    // Track photo upload event with GTM Manager
+    if (window.GTMManager) {
+        window.GTMManager.trackPhotoUploadStarted(files.length);
+    }
+    
     Array.from(files).forEach(file => {
         if (file.type.startsWith('image/')) {
+            // Track individual image details with GTM Manager
+            if (window.GTMManager) {
+                window.GTMManager.trackPhotoFileProcessed(file);
+            }
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 addImagePreview(e.target.result, file);
@@ -1236,12 +1263,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the welcome chat sequence
     setTimeout(() => {
         console.log('[Rexy] Starting initial chat sequence...');
+        
+        // Track welcome sequence start with GTM Manager
+        if (window.GTMManager) {
+            window.GTMManager.trackWelcomeStarted();
+        }
+        
         // Add welcome GIF first
         showWelcomeGif();
         
         // Add welcome message
         setTimeout(() => {
             addMessage("Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!", false);
+            
+            // Track welcome sequence complete with GTM Manager
+            if (window.GTMManager) {
+                window.GTMManager.trackWelcomeCompleted();
+            }
         }, 1000);
     }, 500);
     

@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-N2DZV2ZF');</script>
+    <!-- End Google Tag Manager -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat with Rexy - Coach</title>
@@ -15,10 +18,39 @@
     <script src="js/test-assets.js"></script>
     <script src="js/photo.js"></script>
     <script src="js/debug-panel.js"></script>
+    <script src="js/gtm-manager.js"></script>
     <script src="js/netomi-integration.js"></script>
     <script src="js/rexy.js"></script>
+    
+    <!-- GTM Debug Script -->
+    <script>
+        // Wait for GTM Manager to load and verify it's working
+        window.addEventListener('load', function() {
+            // Check if GTM Manager exists and send initialization events
+            if (window.GTMManager) {
+                console.log('✅ GTM Manager loaded successfully');
+                
+                // Send the custom datalayer_initialized event first
+                window.GTMManager.trackDataLayerInitialized({
+                    event_action: 'page_load',
+                    event_label: 'rexy_chat_initialization',
+                    store_code: 'coach_rexy', // You can customize these values
+                    qr_code: '', // Add QR code if available
+                    session_timer: new Date().toISOString() // Current timestamp
+                });
+                
+                // Then send the regular page view event
+                window.GTMManager.trackPageView();
+            } else {
+                console.error('❌ GTM Manager not loaded');
+            }
+        });
+    </script>
 </head>
 <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N2DZV2ZF" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div class="chat-container">
         <!-- Header -->
         <div class="chat-header">
