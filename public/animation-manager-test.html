@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation Manager Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log-container {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        .mock-chat {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+            min-height: 150px;
+        }
+    </style>
+    <link rel="stylesheet" href="css/message.css">
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎛️ Animation Manager Test</h1>
+        <p>Testing the refactored AnimationManager functionality</p>
+        
+        <div class="stats">
+            <h3>Animation Manager Stats</h3>
+            <div class="stat-item">
+                <span>Chat Count:</span>
+                <span id="chatCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Is Thinking Active:</span>
+                <span id="isThinkingActive">false</span>
+            </div>
+        </div>
+
+        <div>
+            <h3>Chat Count Tests</h3>
+            <button class="test-button" onclick="testIncrementChatCount()">
+                ➕ Increment Chat Count
+            </button>
+            <button class="test-button" onclick="testResetChatCount()">
+                🔄 Reset Chat Count
+            </button>
+        </div>
+
+        <div>
+            <h3>Animation Tests</h3>
+            <button class="test-button" onclick="testStartThinkingAnimation()">
+                🎬 Start Thinking Animation
+            </button>
+            <button class="test-button" onclick="testStopThinkingAnimation()">
+                ⏹️ Stop Thinking Animation
+            </button>
+            <button class="test-button" onclick="testForceShowOverlay()">
+                💫 Force Show Overlay
+            </button>
+            <button class="test-button" onclick="testForceHideOverlay()">
+                ❌ Force Hide Overlay
+            </button>
+        </div>
+
+        <!-- Walking Animation Tests removed - deprecated -->
+
+        <div>
+            <h3>Mock Chat Container</h3>
+            <div class="mock-chat" id="mockChat">
+                <!-- Test animations will appear here -->
+            </div>
+        </div>
+
+        <div>
+            <h3>Simulation Test</h3>
+            <button class="test-button" onclick="simulateFullChatFlow()">
+                🚀 Simulate Full Chat Flow
+            </button>
+            <button class="test-button" onclick="clearMockChat()">
+                🧹 Clear Mock Chat
+            </button>
+        </div>
+
+        <div>
+            <h3>Debug Log</h3>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <!-- Mock some global state for testing -->
+    <script>
+        // Mock RexyGlobalState for testing
+        window.RexyGlobalState = {
+            is3DOn: () => true
+        };
+    </script>
+
+    <script src="js/animation-manager.js"></script>
+    <script>
+        // Mock console for debug output
+        const originalConsoleLog = console.log;
+        
+        function logToConsole(message, type = 'log') {
+            const consoleEl = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'warn' ? '#feca57' : '#48dbfb';
+            consoleEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToConsole(args.join(' '), 'log');
+        };
+
+        function updateStats() {
+            const stats = window.AnimationManager.getStats();
+            document.getElementById('chatCount').textContent = stats.userChatCount;
+            document.getElementById('isThinkingActive').textContent = stats.isThinkingActive;
+        }
+
+        function testIncrementChatCount() {
+            const newCount = window.AnimationManager.incrementChatCount();
+            logToConsole(`✅ Chat count incremented to: ${newCount}`);
+            updateStats();
+        }
+
+        function testResetChatCount() {
+            window.AnimationManager.resetChatCount();
+            logToConsole('✅ Chat count reset');
+            updateStats();
+        }
+
+        function testStartThinkingAnimation() {
+            logToConsole('🎬 Testing start thinking animation...');
+            window.AnimationManager.startThinkingAnimation();
+            updateStats();
+        }
+
+        function testStopThinkingAnimation() {
+            logToConsole('⏹️ Testing stop thinking animation...');
+            window.AnimationManager.stopThinkingAnimation();
+            updateStats();
+        }
+
+        function testForceShowOverlay() {
+            logToConsole('💫 Force showing thinking overlay...');
+            window.AnimationManager.forceShowThinkingOverlay();
+        }
+
+        function testForceHideOverlay() {
+            logToConsole('❌ Force hiding thinking overlay...');
+            window.AnimationManager.forceHideThinkingOverlay();
+        }
+
+        // Walking Rexy test functions removed - deprecated
+
+        function clearMockChat() {
+            document.getElementById('mockChat').innerHTML = '';
+            logToConsole('🧹 Mock chat cleared');
+        }
+
+        function simulateFullChatFlow() {
+            logToConsole('🚀 Starting full chat flow simulation...');
+            
+            // Reset first
+            window.AnimationManager.resetChatCount();
+            clearMockChat();
+            
+            const mockChat = document.getElementById('mockChat');
+            
+            // Walking Rexy deprecated - skipped
+            logToConsole('1. Walking Rexy animation deprecated - skipped');
+            
+            // Simulate 3 messages
+            for (let i = 1; i <= 5; i++) {
+                setTimeout(() => {
+                    window.AnimationManager.incrementChatCount();
+                    logToConsole(`${i + 1}. Simulated message ${i}`);
+                    
+                    // Test thinking animation logic
+                    window.AnimationManager.startThinkingAnimation();
+                    
+                    // Stop after a short delay
+                    setTimeout(() => {
+                        window.AnimationManager.stopThinkingAnimation();
+                        updateStats();
+                        
+                        if (i === 5) {
+                            logToConsole('✅ Full chat flow simulation completed!');
+                        }
+                    }, 1000);
+                }, i * 2000);
+            }
+        }
+
+        // Initialize
+        updateStats();
+        logToConsole('🧪 Animation Manager Test initialized');
+        logToConsole('AnimationManager available: ' + !!window.AnimationManager);
+        
+        // Log configuration constants for testing
+        if (typeof ANIMATION_CONFIG !== 'undefined') {
+            logToConsole('📋 Animation Configuration:');
+            logToConsole(`  • Animation Probability: ${Math.round(ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY * 100)}%`);
+            logToConsole(`  • Animation Delay: ${ANIMATION_CONFIG.THINKING_ANIMATION_DELAY_MS}ms`);
+            logToConsole(`  • Minimum Chats: ${ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION}`);
+            logToConsole(`  • Available Animations: ${ANIMATION_CONFIG.THINKING_ANIMATIONS.join(', ')}`);
+        }
+    </script>
+</body>
+</html>

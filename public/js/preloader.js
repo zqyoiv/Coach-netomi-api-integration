@@ -30,7 +30,7 @@ class AssetPreloader {
                 'Rexy_Receivephoto.gif',
                 'Rexy_Searching.gif',
                 'Rexy_Thinking.gif',
-                'Rexy_Walk.gif',
+                // 'Rexy_Walk.gif', // Deprecated - walking animation removed
                 'Rexy_Watchreel.gif',
                 'Rexy_Welcome.gif'
             ],

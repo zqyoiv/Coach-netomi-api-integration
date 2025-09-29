@@ -86,7 +86,7 @@
 }
 
 .welcome-gif {
-    width: 140vw /* Larger than regular stickers */
+    width: 140vw; /* Larger than regular stickers */
     height: auto;
     object-fit: contain;
     border-radius: 8px;
@@ -145,22 +145,7 @@
     cursor: not-allowed;
 }
 
-/* Walking Rexy Background */
-.walking-rexy {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    height: 100%;
-    z-index: 0;
-    opacity: 0.8;
-    pointer-events: none;
-    transition: opacity 0.5s ease-out;
-}
-
-.walking-rexy.hidden {
-    opacity: 0;
-}
+/* Walking Rexy animation deprecated - styles removed */
 
 /* Thinking Rexy animation inside chat */
 .thinking-rexy {

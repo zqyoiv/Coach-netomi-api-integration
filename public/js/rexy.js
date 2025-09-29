@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendButton = document.querySelector('.send-button');
     const chatMessages = document.querySelector('.chat-messages');
     
+    // Animation logic is now handled by AnimationManager
+    
     // Wait for dependencies to load if they're not ready yet
     function waitForDependencies() {
         if (!window.RexyGlobalState || !window.NetomiIntegration) {
@@ -52,31 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content welcome-gif-content';
         
-        // Try to get cached welcome animation first
-        const cachedWelcome = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Welcome');
-        
-        const welcomeImg = document.createElement('img');
-        
-        if (cachedWelcome) {
-            // Use cached image
-            welcomeImg.src = cachedWelcome.src;
-            console.log('🚀 Using cached welcome GIF');
-        } else {
-            // Fallback to loading image normally
-            welcomeImg.src = 'image/3d/Rexy_Welcome.gif';
-            console.log('⏳ Loading welcome GIF from server');
-        }
-        
-        welcomeImg.alt = 'Rexy Welcome';
-        welcomeImg.className = 'welcome-gif';
-        welcomeImg.onerror = function() {
-            // If welcome GIF doesn't exist, fallback to hi sticker
-            console.warn('Welcome GIF not found, falling back to hi sticker');
-            welcomeImg.src = 'image/stickers/hi.gif';
-            welcomeImg.className = 'sticker';
-        };
-        
-        messageContent.appendChild(welcomeImg);
+        // Use AnimationManager for welcome animation
+        window.AnimationManager.showWelcomeAnimation(messageContent);
         messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         
@@ -234,8 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.GTMManager.trackQuickReply(text);
         }
         
-        // Hide walking Rexy when user makes a choice
-        hideWalkingRexy();
+        // Walking Rexy animation deprecated - removed
         
         // Change button appearance to selected state
         buttonElement.className = 'quick-reply-option selected';
@@ -246,6 +224,9 @@ document.addEventListener('DOMContentLoaded', function() {
             option.disabled = true;
             option.style.pointerEvents = 'none';
         });
+        
+        // Increment user chat count for quick reply selections
+        window.AnimationManager.incrementChatCount();
         
         // Add user message bubble immediately
         addMessage(text, true);
@@ -310,47 +291,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to add walking Rexy background
-    function addWalkingRexy() {
-        // Try to get cached animation first
-        const cachedWalking = window.AssetPreloader && window.AssetPreloader.getAnimation('Rexy_Walk');
-        
-        const walkingRexy = document.createElement('img');
-        
-        if (cachedWalking) {
-            // Use cached image
-            walkingRexy.src = cachedWalking.src;
-            console.log('🚀 Using cached walking animation');
-        } else {
-            // Fallback to loading image normally
-            walkingRexy.src = 'image/3d/Rexy_Walk.gif';
-            console.log('⏳ Loading walking animation from server');
-        }
-        
-        walkingRexy.alt = 'Walking Rexy';
-        walkingRexy.className = 'walking-rexy';
-        walkingRexy.id = 'walking-rexy';
-        chatMessages.appendChild(walkingRexy);
-    }
-    
-    // Function to hide walking Rexy
-    function hideWalkingRexy() {
-        const walkingRexy = document.getElementById('walking-rexy');
-        if (walkingRexy) {
-            walkingRexy.classList.add('hidden');
-            // Remove from DOM after animation
-            setTimeout(() => {
-                if (walkingRexy.parentNode) {
-                    walkingRexy.parentNode.removeChild(walkingRexy);
-                }
-            }, 500);
-        }
-    }
+    // Walking animations deprecated - removed
 
     // Initialize chat with welcome message and options
     function initializeChat() {
-        // Add walking Rexy immediately
-        addWalkingRexy();
+        // Walking Rexy animation deprecated - removed
         
         // Show welcome GIF, welcome message and options together 1 second after page load
         setTimeout(() => {
@@ -383,6 +328,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Send text message if there's text
         if (text) {
+            // Increment user chat count for legitimate messages (not test commands)
+            window.AnimationManager.incrementChatCount();
+                        
             addMessage(text, true);
         }
         
@@ -548,18 +496,8 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         
-        // Track start time for response timing
-        window.thinkingAnimationStartTime = Date.now();
-        
-        // Show full-screen 3D thinking overlay after 2 seconds delay (guarded by debug flag)
-        if (window.RexyGlobalState && window.RexyGlobalState.is3DOn && window.RexyGlobalState.is3DOn()) {
-            window.thinkingAnimationTimeout = setTimeout(() => {
-                // Only show if typing indicator still exists (response hasn't arrived yet)
-                if (document.getElementById('typingIndicator')) {
-                    showThinkingOverlay();
-                }
-            }, 2000);
-        }
+        // Start thinking animation logic via AnimationManager
+        window.AnimationManager.startThinkingAnimation();
         
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -572,35 +510,11 @@ document.addEventListener('DOMContentLoaded', function() {
             typingIndicator.remove();
         }
         
-        // Clear the thinking animation timeout if response came back quickly
-        if (window.thinkingAnimationTimeout) {
-            clearTimeout(window.thinkingAnimationTimeout);
-            window.thinkingAnimationTimeout = null;
-        }
-        
-        // Calculate response time for debugging
-        if (window.thinkingAnimationStartTime) {
-            const responseTime = Date.now() - window.thinkingAnimationStartTime;
-            console.log(`[Rexy] Response received in ${responseTime}ms`);
-            window.thinkingAnimationStartTime = null;
-        }
-        
-        // Hide full-screen 3D thinking overlay when typing indicator is removed
-        hideThinkingOverlay();
+        // Stop thinking animation via AnimationManager
+        window.AnimationManager.stopThinkingAnimation();
     }
 
-    // Helper function to randomly select a waiting animation
-    function getRandomWaitingAnimation() {
-        const animations = [
-            'Rexy_Thinking',
-            'Rexy_Receivephoto', 
-            'Rexy_Searching'
-        ];
-        const randomIndex = Math.floor(Math.random() * animations.length);
-        const selectedAnimation = animations[randomIndex];
-        console.log(`[Rexy] Selected random waiting animation: ${selectedAnimation}`);
-        return selectedAnimation;
-    }
+    // Animation selection is now handled by AnimationManager
 
     // Helper function to render multiple text messages sequentially
     function renderMultipleMessages(textMessages, delay = 1000) {
@@ -616,60 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Show thinking Rexy animation overlay inside chat area
-    function addThinkingRexy() {
-        if (document.getElementById('thinking-rexy')) return;
-        const animationName = getRandomWaitingAnimation();
-        const thinking = document.createElement('img');
-        thinking.src = `image/3d/${animationName}.gif`;
-        thinking.alt = 'Rexy waiting';
-        thinking.className = 'thinking-rexy';
-        thinking.id = 'thinking-rexy';
-        chatMessages.appendChild(thinking);
-    }
-
-    function removeThinkingRexy() {
-        const el = document.getElementById('thinking-rexy');
-        if (el && el.parentNode) {
-            el.parentNode.removeChild(el);
-        }
-    }
-
-    // Full-screen thinking overlay (persistent until explicitly hidden)
-    function showThinkingOverlay() {
-        if (document.getElementById('rexy-3d-overlay')) return; // already showing
-        const overlay = document.createElement('div');
-        overlay.className = 'rexy-3d-overlay';
-        overlay.id = 'rexy-3d-overlay';
-
-        // Get random waiting animation
-        const animationName = getRandomWaitingAnimation();
-        
-        // Try to use preloaded animation if available
-        const cached = window.AssetPreloader && window.AssetPreloader.getAnimation(animationName);
-        const gif = document.createElement('img');
-        gif.className = 'rexy-3d-gif';
-        gif.alt = 'Rexy Waiting';
-        gif.src = cached ? cached.src : `image/3d/${animationName}.gif`;
-        gif.onerror = function() {
-            // If loading fails, remove overlay
-            hideThinkingOverlay();
-        };
-
-        overlay.appendChild(gif);
-        document.body.appendChild(overlay);
-        // fade-in
-        setTimeout(() => overlay.classList.add('show'), 10);
-    }
-
-    function hideThinkingOverlay() {
-        const overlay = document.getElementById('rexy-3d-overlay');
-        if (!overlay) return;
-        overlay.classList.remove('show');
-        setTimeout(() => {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        }, 300);
-    }
+    // 3D thinking overlay functions are now handled by AnimationManager
     
     // Add carousel message
     function addCarouselMessage(carouselData) {
