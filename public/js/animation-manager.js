@@ -32,6 +32,7 @@ const ANIMATION_CONFIG = {
     ],
 
     // Watch Reel Animation Settings
+    WATCH_REEL_PROBABILITY: 0.2,                   // 20% chance to show watch reel
     WATCH_REEL_DURATION_MS: 5000,                  // 5 seconds display duration
     WATCH_REEL_FADE_OUT_MS: 300,                   // 300ms fade-out duration
     WATCH_REEL_ANIMATION_PATH: 'image/3d/Rexy_Watchreel.gif',
@@ -275,6 +276,15 @@ class AnimationManager {
             return;
         }
 
+        // Check probability - only show watch reel 20% of the time
+        const showWatchReel = Math.random() < ANIMATION_CONFIG.WATCH_REEL_PROBABILITY;
+        if (!showWatchReel) {
+            console.log(`[AnimationManager] Watch reel skipped due to ${Math.round(ANIMATION_CONFIG.WATCH_REEL_PROBABILITY * 100)}% probability`);
+            return;
+        }
+
+        console.log(`[AnimationManager] Watch reel will show (${Math.round(ANIMATION_CONFIG.WATCH_REEL_PROBABILITY * 100)}% chance triggered)`);
+
         // Create Rexy watch reel element
         const rexyWatchReel = document.createElement('img');
         rexyWatchReel.className = ANIMATION_CONFIG.WATCH_REEL_CLASS_NAME;
@@ -356,16 +366,6 @@ class AnimationManager {
     setForceDuration(durationMs) {
         ANIMATION_CONFIG.THINKING_ANIMATION_FORCE_DURATION_MS = durationMs;
         console.log(`[AnimationManager] 🐛 DEBUG: Force duration set to ${durationMs}ms`);
-    }
-
-    /**
-     * Test thinking animation with force duration
-     * @param {number} durationMs - Duration to test in milliseconds
-     */
-    testThinkingAnimation(durationMs) {
-        console.log(`[AnimationManager] 🧪 TESTING: Starting thinking animation with ${durationMs}ms force duration`);
-        this.setForceDuration(durationMs);
-        this.forceShowThinkingOverlay();
     }
 
     
