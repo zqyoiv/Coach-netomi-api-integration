@@ -859,6 +859,15 @@ document.addEventListener('DOMContentLoaded', function() {
         closeBtn.innerHTML = '×';
         closeBtn.onclick = function(e) {
             e.stopPropagation();
+            // Track image close interaction
+            if (window.GTMManager) {
+                window.GTMManager.trackContentInteraction('close', 'image', {
+                    title: title || 'Image',
+                    url: imageUrl,
+                    id: 'image_close_' + Date.now(),
+                    close_method: 'button_click'
+                });
+            }
             closeImageOverlay();
         };
         
@@ -869,7 +878,15 @@ document.addEventListener('DOMContentLoaded', function() {
         img.className = 'fullscreen-photo'; // Reuse fullscreen photo styles
         img.onclick = function(e) {
             e.stopPropagation();
-            // Close on image click
+            // Track image close interaction when clicking on image
+            if (window.GTMManager) {
+                window.GTMManager.trackContentInteraction('close', 'image', {
+                    title: title || 'Image',
+                    url: imageUrl,
+                    id: 'image_close_' + Date.now(),
+                    close_method: 'image_click'
+                });
+            }
             closeImageOverlay();
         };
         
@@ -900,6 +917,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Close on overlay click (but not on image click)
         overlay.onclick = function(e) {
             if (e.target === overlay) {
+                // Track image close interaction when clicking outside image
+                if (window.GTMManager) {
+                    window.GTMManager.trackContentInteraction('close', 'image', {
+                        title: title || 'Image',
+                        url: imageUrl,
+                        id: 'image_close_overlay_' + Date.now(),
+                        close_method: 'overlay_click'
+                    });
+                }
                 closeImageOverlay();
             }
         };
