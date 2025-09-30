@@ -183,13 +183,21 @@ class GTMManager {
     trackContentInteraction(interactionType, contentType, contentDetails = {}) {
         this.updateActivity();
         this.sendEvent('content_interaction', {
-            'interaction_type': interactionType, // 'tap', 'expand', 'close', 'play', 'pause', 'download', 'scroll'
+            'interaction_type': interactionType, // 'tap', 'expand', 'close', 'play', 'pause', 'ended', 'download', 'scroll'
             'content_type': contentType, // 'carousel', 'image', 'video', 'product_card', 'quick_reply'
             'content_id': contentDetails.id || '',
             'content_title': contentDetails.title || '',
             'content_url': contentDetails.url || '',
             'item_position': contentDetails.position || 0, // for carousel items
-            'total_items': contentDetails.total || 0 // for carousel
+            'total_items': contentDetails.total || 0, // for carousel
+            // Video-specific tracking data
+            'current_time': contentDetails.current_time || 0, // video playback position in seconds
+            'duration': contentDetails.duration || 0, // total video duration in seconds
+            'watch_percentage': contentDetails.watch_percentage || 0, // percentage of video watched
+            'was_playing': contentDetails.was_playing || false, // was video playing when interaction occurred
+            'close_method': contentDetails.close_method || '', // 'button_click', 'overlay_click', etc.
+            // Image/content-specific data
+            'size': contentDetails.size || 0 // file size for uploads
         });
     }
 

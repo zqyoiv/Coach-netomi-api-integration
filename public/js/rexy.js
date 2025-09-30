@@ -676,6 +676,19 @@ document.addEventListener('DOMContentLoaded', function() {
         closeBtn.innerHTML = '×';
         closeBtn.onclick = function(e) {
             e.stopPropagation();
+            // Track video close interaction with current playback state
+            if (window.GTMManager) {
+                const video = overlay.querySelector('video');
+                window.GTMManager.trackContentInteraction('close', 'video', {
+                    title: title || 'Video',
+                    url: videoUrl,
+                    id: 'video_close_' + Date.now(),
+                    current_time: video ? video.currentTime : 0,
+                    duration: video ? (video.duration || 0) : 0,
+                    watch_percentage: video && video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0,
+                    was_playing: video ? !video.paused : false
+                });
+            }
             closeVideoOverlay();
         };
         
@@ -711,6 +724,47 @@ document.addEventListener('DOMContentLoaded', function() {
             errorMsg.textContent = 'Unable to load video';
             videoContainer.appendChild(errorMsg);
         };
+
+        // Track video play event
+        video.addEventListener('play', function() {
+            if (window.GTMManager) {
+                window.GTMManager.trackContentInteraction('play', 'video', {
+                    title: title || 'Video',
+                    url: videoUrl,
+                    id: 'video_play_' + Date.now(),
+                    current_time: video.currentTime,
+                    duration: video.duration || 0
+                });
+            }
+        });
+
+        // Track video pause event
+        video.addEventListener('pause', function() {
+            if (window.GTMManager) {
+                window.GTMManager.trackContentInteraction('pause', 'video', {
+                    title: title || 'Video',
+                    url: videoUrl,
+                    id: 'video_pause_' + Date.now(),
+                    current_time: video.currentTime,
+                    duration: video.duration || 0,
+                    watch_percentage: video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0
+                });
+            }
+        });
+
+        // Track video ended event
+        video.addEventListener('ended', function() {
+            if (window.GTMManager) {
+                window.GTMManager.trackContentInteraction('ended', 'video', {
+                    title: title || 'Video',
+                    url: videoUrl,
+                    id: 'video_ended_' + Date.now(),
+                    current_time: video.currentTime,
+                    duration: video.duration || 0,
+                    watch_percentage: 100
+                });
+            }
+        });
         
         videoContainer.appendChild(video);
         overlay.appendChild(closeBtn);
@@ -726,6 +780,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // Close on overlay click (but not on video click)
         overlay.onclick = function(e) {
             if (e.target === overlay) {
+                // Track video close interaction when clicking outside video
+                if (window.GTMManager) {
+                    const video = overlay.querySelector('video');
+                    window.GTMManager.trackContentInteraction('close', 'video', {
+                        title: title || 'Video',
+                        url: videoUrl,
+                        id: 'video_close_overlay_' + Date.now(),
+                        current_time: video ? video.currentTime : 0,
+                        duration: video ? (video.duration || 0) : 0,
+                        watch_percentage: video && video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0,
+                        was_playing: video ? !video.paused : false,
+                        close_method: 'overlay_click'
+                    });
+                }
                 closeVideoOverlay();
             }
         };
