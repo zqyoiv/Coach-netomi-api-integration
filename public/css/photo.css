@@ -43,8 +43,9 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 101vw;
+    width: 100vw; /* Fixed: was 101vw which could cause horizontal offset */
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile Safari */
     background-color: rgba(22, 22, 22, 0.95);
     display: flex;
     align-items: center;
@@ -53,6 +54,9 @@
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
     backdrop-filter: blur(5px);
+    /* Safari-specific fixes */
+    -webkit-box-align: center;
+    -webkit-box-pack: center;
 }
 
 .photo-overlay.show {
@@ -68,6 +72,7 @@
     align-items: center;
     max-width: 90vw;
     max-height: 90vh;
+    max-height: 90dvh; /* Dynamic viewport height for mobile Safari */
     padding: 20px;
 }
 
@@ -91,6 +96,7 @@
 .fullscreen-photo {
     max-width: 90vw;
     max-height: 90vh;
+    max-height: 90dvh; /* Dynamic viewport height for mobile Safari */
     object-fit: contain;
     border-radius: 12px;
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
@@ -149,4 +155,42 @@
 
 .photo-nav.next {
     right: 20px;
+}
+
+/* Mobile Safari Photo Overlay Fixes */
+@media screen and (max-width: 768px) {
+    .photo-overlay {
+        /* Ensure full coverage on mobile Safari */
+        min-height: 100vh;
+        min-height: 100dvh;
+        /* Additional Safari-specific properties */
+        -webkit-transform: translateZ(0); /* Force hardware acceleration */
+        transform: translateZ(0);
+    }
+    
+    .fullscreen-photo {
+        /* More aggressive centering for mobile Safari */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        -webkit-transform: translate(-50%, -50%);
+        max-width: 90vw;
+        max-height: 90vh;
+        max-height: 90dvh;
+        width: auto;
+        height: auto;
+    }
+    
+    .expanded-photos {
+        /* Ensure proper centering for photo grid */
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        -webkit-transform: translate(-50%, -50%);
+        width: 90vw;
+        max-height: 90vh;
+        max-height: 90dvh;
+    }
 }
