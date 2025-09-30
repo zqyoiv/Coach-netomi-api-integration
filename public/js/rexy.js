@@ -69,11 +69,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Track message events with GTM Manager
         if (isUser) {
             if (window.GTMManager) {
-                window.GTMManager.trackUserMessage(text, isSticker);
+                window.GTMManager.trackMessageSend(text, isSticker ? 'sticker' : 'text');
+                window.GTMManager.incrementMessagesSent();
             }
         } else {
             if (window.GTMManager) {
-                window.GTMManager.trackBotResponse(text, isHtml);
+                const messageType = isHtml ? 'html' : 'text';
+                const hasContent = isHtml || text.includes('carousel') || text.includes('image') || text.includes('video');
+                window.GTMManager.trackMessageReceived(text, messageType, hasContent);
+                window.GTMManager.incrementMessagesReceived();
             }
         }
         
@@ -206,7 +210,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleQuickReply(text, buttonElement) {
         // Track quick reply selection with GTM Manager
         if (window.GTMManager) {
-            window.GTMManager.trackQuickReply(text);
+            window.GTMManager.trackContentInteraction('tap', 'quick_reply', {
+                title: text,
+                id: 'quick_reply_' + Date.now()
+            });
         }
         
         // Walking Rexy animation deprecated - removed
@@ -372,6 +379,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         await handleNetomiMessage(text);
                     } catch (error) {
                         console.error('[Rexy] Error sending to Netomi:', error);
+                        // Track API error
+                        if (window.GTMManager) {
+                            window.GTMManager.trackError('api', 'Netomi API error', {
+                                source: 'message_send',
+                                message: error.message || String(error)
+                            });
+                        }
                         // Fallback to mock response on error
                         addMessage("I'm having trouble connecting right now. Please try again later.", false);
                     }
@@ -462,6 +476,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('[Rexy] Netomi message failed:', error);
+            // Track network error
+            if (window.GTMManager) {
+                window.GTMManager.trackError('network', 'Netomi request failed', {
+                    source: 'netomi_integration',
+                    message: error.message || String(error)
+                });
+            }
             removeTypingIndicator();
             addMessage("I'm having trouble connecting right now. Please try again later.", false);
         }
@@ -566,6 +587,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add click handler to open video overlay
                 videoContainer.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    // Track video interaction
+                    if (window.GTMManager) {
+                        window.GTMManager.trackContentInteraction('tap', 'video', {
+                            title: element.title || 'Video',
+                            url: element.videoUrl,
+                            id: 'carousel_video_' + Date.now()
+                        });
+                    }
                     openVideoOverlay(element.videoUrl, element.title);
                 });
                 
@@ -584,6 +613,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add click handler to open image overlay
                 img.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    // Track image interaction
+                    if (window.GTMManager) {
+                        window.GTMManager.trackContentInteraction('tap', 'image', {
+                            title: element.title || 'Image',
+                            url: element.imageUrl,
+                            id: 'carousel_image_' + Date.now()
+                        });
+                    }
                     openImageOverlay(element.imageUrl, element.title || 'Image');
                 });
                 
@@ -661,6 +698,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle video errors
         video.onerror = function() {
             console.error('Video failed to load:', videoUrl);
+            // Track video error
+            if (window.GTMManager) {
+                window.GTMManager.trackError('media', 'Video failed to load', {
+                    source: 'video_overlay',
+                    url: videoUrl,
+                    title: title
+                });
+            }
             const errorMsg = document.createElement('div');
             errorMsg.className = 'video-error';
             errorMsg.textContent = 'Unable to load video';
@@ -763,6 +808,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle image errors
         img.onerror = function() {
             console.error('Image failed to load:', imageUrl);
+            // Track image error
+            if (window.GTMManager) {
+                window.GTMManager.trackError('media', 'Image failed to load', {
+                    source: 'image_overlay',
+                    url: imageUrl,
+                    title: title
+                });
+            }
             const errorMsg = document.createElement('div');
             errorMsg.className = 'image-error';
             errorMsg.style.color = 'white';
@@ -875,14 +928,21 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleImageSelection(files) {
     // Track photo upload event with GTM Manager
     if (window.GTMManager) {
-        window.GTMManager.trackPhotoUploadStarted(files.length);
+        window.GTMManager.trackContentInteraction('upload', 'image', {
+            total: files.length,
+            id: 'photo_upload_' + Date.now()
+        });
     }
     
     Array.from(files).forEach(file => {
         if (file.type.startsWith('image/')) {
             // Track individual image details with GTM Manager
             if (window.GTMManager) {
-                window.GTMManager.trackPhotoFileProcessed(file);
+                window.GTMManager.trackContentInteraction('process', 'image', {
+                    title: file.name,
+                    id: 'image_' + Date.now(),
+                    size: file.size
+                });
             }
             
             const reader = new FileReader();
@@ -1125,7 +1185,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Track welcome sequence start with GTM Manager
         if (window.GTMManager) {
-            window.GTMManager.trackWelcomeStarted();
+            window.GTMManager.trackContentInteraction('display', 'welcome_gif', {
+                title: 'Rexy Welcome Animation',
+                id: 'welcome_start'
+            });
         }
         
         // Add welcome GIF first
@@ -1137,7 +1200,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Track welcome sequence complete with GTM Manager
             if (window.GTMManager) {
-                window.GTMManager.trackWelcomeCompleted();
+                window.GTMManager.trackMessageReceived(
+                    "Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!", 
+                    'text', 
+                    false
+                );
+                window.GTMManager.incrementMessagesReceived();
             }
         }, 1000);
     }, 500);

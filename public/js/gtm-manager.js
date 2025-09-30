@@ -1,13 +1,27 @@
 /**
  * Google Tag Manager Event Tracking Manager
  * Centralized GTM event handling for Coach Rexy Chat Application
+ * 
+ * Implements 5 core events:
+ * - message_send: when user attempts to send a message
+ * - message_received: when user receives a message from rexy
+ * - content_interaction: when user interacts with any content (carousel, images, videos)
+ * - error: whenever an error occurs
+ * - session_close: when user closes tab or 30 minutes of inactivity
  */
 
 class GTMManager {
     constructor() {
         this.isInitialized = false;
         this.eventQueue = [];
+        this.sessionStartTime = Date.now();
+        this.lastActivityTime = Date.now();
+        this.inactivityTimer = null;
+        this.inactivityThreshold = 30 * 60 * 1000; // 30 minutes in milliseconds
+        
         this.init();
+        this.setupSessionTracking();
+        this.setupInactivityTracking();
     }
 
     /**
@@ -40,6 +54,7 @@ class GTMManager {
             'event': eventName,
             'timestamp': new Date().toISOString(),
             'chat_session_id': this.getSessionId(),
+            'session_duration': Date.now() - this.sessionStartTime,
             ...eventData
         };
 
@@ -63,262 +78,205 @@ class GTMManager {
     flushEventQueue() {
         if (this.eventQueue.length > 0) {
             console.log(`🚀 Flushing ${this.eventQueue.length} queued GTM events`);
-            this.eventQueue.forEach(({ eventName, eventData, isDirect }) => {
-                if (isDirect) {
-                    // Direct dataLayer push for specific events like datalayer_initialized
-                    try {
-                        dataLayer.push(eventData);
-                        console.log('🏷️ GTM Event (direct):', eventName, eventData);
-                    } catch (error) {
-                        console.error('❌ GTM Event (direct) failed:', eventName, error);
-                    }
-                } else {
-                    // Regular event through sendEvent method
-                    this.sendEvent(eventName, eventData);
-                }
+            this.eventQueue.forEach(({ eventName, eventData }) => {
+                this.sendEvent(eventName, eventData);
             });
             this.eventQueue = [];
         }
     }
 
     /**
-     * Track data layer initialization (custom event from coworker)
+     * Update activity timestamp and reset inactivity timer
      */
-    trackDataLayerInitialized(options = {}) {
-        const defaultData = {
-            'event': 'datalayer_initialized',
-            'event_action': options.event_action || '',
-            'event_label': options.event_label || '',
-            'store_code': options.store_code || '',
-            'qr_code': options.qr_code || '',
-            'session_timer': options.session_timer || ''
-        };
+    updateActivity() {
+        this.lastActivityTime = Date.now();
+        this.resetInactivityTimer();
+    }
 
-        // Send directly to dataLayer (not through sendEvent to avoid extra fields)
-        if (this.isInitialized && typeof dataLayer !== 'undefined') {
-            try {
-                dataLayer.push(defaultData);
-                console.log('🏷️ GTM DataLayer Initialized Event:', defaultData);
-            } catch (error) {
-                console.error('❌ GTM DataLayer Initialized Event failed:', error);
+    /**
+     * Setup session tracking for tab close and navigation
+     */
+    setupSessionTracking() {
+        // Track tab close, navigation, and page unload
+        window.addEventListener('beforeunload', () => {
+            this.trackSessionClose('tab_close');
+        });
+
+        // Track navigation to different sites
+        window.addEventListener('pagehide', () => {
+            this.trackSessionClose('navigation');
+        });
+
+        // Track visibility change (tab switching)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Don't close session on tab switch, just update activity
+                this.updateActivity();
             }
-        } else {
-            // Queue for later if GTM not ready
-            this.eventQueue.push({ 
-                eventName: 'datalayer_initialized_direct', 
-                eventData: defaultData,
-                isDirect: true 
-            });
-            console.warn('⏳ GTM not ready, queued datalayer_initialized event');
+        });
+    }
+
+    /**
+     * Setup inactivity tracking
+     */
+    setupInactivityTracking() {
+        // Track user activity events
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        
+        activityEvents.forEach(event => {
+            document.addEventListener(event, () => {
+                this.updateActivity();
+            }, true);
+        });
+
+        // Start inactivity timer
+        this.resetInactivityTimer();
+    }
+
+    /**
+     * Reset the inactivity timer
+     */
+    resetInactivityTimer() {
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
+        }
+
+        this.inactivityTimer = setTimeout(() => {
+            this.trackSessionClose('inactivity');
+        }, this.inactivityThreshold);
+    }
+
+    // ========================================
+    // CORE GTM EVENTS (Only these 5 events)
+    // ========================================
+
+    /**
+     * 1. MESSAGE_SEND - when user attempts to send a message
+     */
+    trackMessageSend(messageText, messageType = 'text') {
+        this.updateActivity();
+        this.sendEvent('message_send', {
+            'message_text': messageText,
+            'message_length': messageText.length,
+            'message_type': messageType, // 'text', 'sticker', 'image'
+            'input_method': 'manual' // could be 'manual', 'quick_reply', etc.
+        });
+    }
+
+    /**
+     * 2. MESSAGE_RECEIVED - when user receives a message from rexy
+     */
+    trackMessageReceived(messageText, messageType = 'text', hasContent = false) {
+        this.updateActivity();
+        this.sendEvent('message_received', {
+            'message_text': messageText,
+            'message_length': messageText.length,
+            'message_type': messageType, // 'text', 'html', 'carousel', 'image', 'video'
+            'has_interactive_content': hasContent, // true if contains carousel, images, videos
+            'response_source': 'netomi'
+        });
+    }
+
+    /**
+     * 3. CONTENT_INTERACTION - when user interacts with any content
+     */
+    trackContentInteraction(interactionType, contentType, contentDetails = {}) {
+        this.updateActivity();
+        this.sendEvent('content_interaction', {
+            'interaction_type': interactionType, // 'tap', 'expand', 'close', 'play', 'pause', 'download', 'scroll'
+            'content_type': contentType, // 'carousel', 'image', 'video', 'product_card', 'quick_reply'
+            'content_id': contentDetails.id || '',
+            'content_title': contentDetails.title || '',
+            'content_url': contentDetails.url || '',
+            'item_position': contentDetails.position || 0, // for carousel items
+            'total_items': contentDetails.total || 0 // for carousel
+        });
+    }
+
+    /**
+     * 4. ERROR - whenever an error occurs
+     */
+    trackError(errorType, errorMessage, errorContext = {}) {
+        this.sendEvent('error', {
+            'error_type': errorType, // 'network', 'api', 'ui', 'validation', 'connection'
+            'error_message': errorMessage,
+            'error_code': errorContext.code || '',
+            'error_source': errorContext.source || 'application',
+            'error_context': JSON.stringify(errorContext),
+            'user_agent': navigator.userAgent,
+            'page_url': window.location.href
+        });
+    }
+
+    /**
+     * 5. SESSION_CLOSE - when user closes tab/navigates or 30min inactivity
+     */
+    trackSessionClose(closeReason) {
+        const sessionDuration = Date.now() - this.sessionStartTime;
+        const inactivityDuration = Date.now() - this.lastActivityTime;
+        
+        this.sendEvent('session_close', {
+            'close_reason': closeReason, // 'tab_close', 'navigation', 'inactivity'
+            'session_duration_ms': sessionDuration,
+            'session_duration_minutes': Math.round(sessionDuration / 60000),
+            'inactivity_duration_ms': inactivityDuration,
+            'inactivity_duration_minutes': Math.round(inactivityDuration / 60000),
+            'messages_sent': this.getMessagesSentCount(),
+            'messages_received': this.getMessagesReceivedCount()
+        });
+
+        // Clear the inactivity timer since session is closing
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
         }
     }
 
-    /**
-     * Track page view completion
-     */
-    trackPageView() {
-        this.sendEvent('page_view_complete', {
-            'page_title': document.title,
-            'page_url': window.location.href,
-            'user_agent': navigator.userAgent,
-            'device_type': /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? 'mobile' : 'desktop'
-        });
-    }
+    // ========================================
+    // HELPER METHODS
+    // ========================================
 
     /**
-     * Track chat welcome sequence
+     * Get count of messages sent in this session (from sessionStorage or counter)
      */
-    trackWelcomeStarted() {
-        this.sendEvent('chat_welcome_started', {
-            'welcome_type': 'initial_load'
-        });
-    }
-
-    trackWelcomeCompleted() {
-        this.sendEvent('chat_welcome_completed', {
-            'welcome_type': 'initial_load'
-        });
+    getMessagesSentCount() {
+        return parseInt(sessionStorage.getItem('messagesSent') || '0');
     }
 
     /**
-     * Track user messages
+     * Get count of messages received in this session
      */
-    trackUserMessage(messageText, isSticker = false) {
-        this.sendEvent('user_message_sent', {
-            'message_text': messageText,
-            'message_length': messageText.length,
-            'is_sticker': isSticker,
-            'message_type': isSticker ? 'sticker' : 'text'
-        });
+    getMessagesReceivedCount() {
+        return parseInt(sessionStorage.getItem('messagesReceived') || '0');
     }
 
     /**
-     * Track bot responses
+     * Increment message sent counter
      */
-    trackBotResponse(messageText, isHtml = false) {
-        this.sendEvent('bot_response_received', {
-            'message_text': messageText,
-            'message_length': messageText.length,
-            'is_html': isHtml,
-            'response_type': isHtml ? 'html' : 'text'
-        });
+    incrementMessagesSent() {
+        const count = this.getMessagesSentCount() + 1;
+        sessionStorage.setItem('messagesSent', count.toString());
     }
 
     /**
-     * Track quick reply selections
+     * Increment message received counter
      */
-    trackQuickReply(replyText) {
-        this.sendEvent('quick_reply_selected', {
-            'reply_text': replyText,
-            'reply_length': replyText.length
-        });
-    }
-
-    /**
-     * Track photo upload events
-     */
-    trackPhotoUploadStarted(fileCount) {
-        this.sendEvent('photo_upload_started', {
-            'file_count': fileCount
-        });
-    }
-
-    trackPhotoFileProcessed(file) {
-        this.sendEvent('photo_file_processed', {
-            'file_type': file.type,
-            'file_size': file.size,
-            'file_name': file.name,
-            'file_size_mb': Math.round(file.size / 1024 / 1024 * 100) / 100
-        });
-    }
-
-    /**
-     * Track carousel interactions
-     */
-    trackCarouselDisplayed(itemCount, carouselType = 'product') {
-        this.sendEvent('carousel_displayed', {
-            'item_count': itemCount,
-            'carousel_type': carouselType
-        });
-    }
-
-    trackCarouselItemClicked(itemIndex, itemTitle, carouselType = 'product') {
-        this.sendEvent('carousel_item_clicked', {
-            'item_index': itemIndex,
-            'item_title': itemTitle,
-            'carousel_type': carouselType
-        });
-    }
-
-    /**
-     * Track video interactions
-     */
-    trackVideoOpened(videoUrl, videoTitle) {
-        this.sendEvent('video_opened', {
-            'video_url': videoUrl,
-            'video_title': videoTitle
-        });
-    }
-
-    trackVideoClosed(videoUrl, videoTitle) {
-        this.sendEvent('video_closed', {
-            'video_url': videoUrl,
-            'video_title': videoTitle
-        });
-    }
-
-    /**
-     * Track image interactions
-     */
-    trackImageOpened(imageUrl, imageTitle) {
-        this.sendEvent('image_opened', {
-            'image_url': imageUrl,
-            'image_title': imageTitle
-        });
-    }
-
-    trackImageClosed(imageUrl, imageTitle) {
-        this.sendEvent('image_closed', {
-            'image_url': imageUrl,
-            'image_title': imageTitle
-        });
-    }
-
-    /**
-     * Track typing indicators
-     */
-    trackTypingStarted() {
-        this.sendEvent('typing_indicator_shown', {});
-    }
-
-    trackTypingStopped() {
-        this.sendEvent('typing_indicator_hidden', {});
-    }
-
-    /**
-     * Track connection events
-     */
-    trackConnectionEstablished() {
-        this.sendEvent('connection_established', {});
-    }
-
-    trackConnectionError(errorType) {
-        this.sendEvent('connection_error', {
-            'error_type': errorType
-        });
-    }
-
-    /**
-     * Track Netomi API interactions
-     */
-    trackNetomiMessageSent(messageLength) {
-        this.sendEvent('netomi_message_sent', {
-            'message_length': messageLength,
-            'api_endpoint': 'process-message'
-        });
-    }
-
-    trackNetomiResponseReceived(responseSuccess, responseTime) {
-        this.sendEvent('netomi_response_received', {
-            'response_success': responseSuccess,
-            'response_time_ms': responseTime
-        });
-    }
-
-    /**
-     * Track errors
-     */
-    trackError(errorType, errorMessage, errorContext = {}) {
-        this.sendEvent('application_error', {
-            'error_type': errorType,
-            'error_message': errorMessage,
-            'error_context': errorContext
-        });
-    }
-
-    /**
-     * Track custom events
-     */
-    trackCustomEvent(eventName, eventData = {}) {
-        this.sendEvent(`custom_${eventName}`, eventData);
+    incrementMessagesReceived() {
+        const count = this.getMessagesReceivedCount() + 1;
+        sessionStorage.setItem('messagesReceived', count.toString());
     }
 }
 
 // Create global instance
 window.GTMManager = new GTMManager();
 
-// Legacy function for backward compatibility
+// Legacy function for backward compatibility (but only for the 5 core events)
 window.sendGTMEvent = function(eventName, eventData = {}) {
-    window.GTMManager.sendEvent(eventName, eventData);
-};
-
-// Helper function for the custom datalayer_initialized event
-window.initializeDataLayer = function(options = {}) {
-    if (window.GTMManager) {
-        window.GTMManager.trackDataLayerInitialized(options);
+    const allowedEvents = ['message_send', 'message_received', 'content_interaction', 'error', 'session_close'];
+    if (allowedEvents.includes(eventName)) {
+        window.GTMManager.sendEvent(eventName, eventData);
     } else {
-        console.warn('GTM Manager not available for datalayer_initialized event');
+        console.warn(`🚫 GTM Event "${eventName}" not allowed. Only these events are supported:`, allowedEvents);
     }
 };
 
-console.log('🏷️ GTM Manager loaded and ready');
+console.log('🏷️ GTM Manager loaded with 5 core events: message_send, message_received, content_interaction, error, session_close');

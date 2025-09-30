@@ -21,25 +21,14 @@
     <script src="js/animation-manager.js"></script>
     <script src="js/rexy.js"></script>
     
-    <!-- GTM Debug Script -->
+    <!-- GTM Initialization Script -->
     <script>
         // Wait for GTM Manager to load and verify it's working
         window.addEventListener('load', function() {
-            // Check if GTM Manager exists and send initialization events
+            // Check if GTM Manager exists
             if (window.GTMManager) {
-                console.log('✅ GTM Manager loaded successfully');
-                
-                // Send the custom datalayer_initialized event first
-                window.GTMManager.trackDataLayerInitialized({
-                    event_action: 'page_load',
-                    event_label: 'rexy_chat_initialization',
-                    store_code: 'coach_rexy', // You can customize these values
-                    qr_code: '', // Add QR code if available
-                    session_timer: new Date().toISOString() // Current timestamp
-                });
-                
-                // Then send the regular page view event
-                window.GTMManager.trackPageView();
+                console.log('✅ GTM Manager loaded successfully with 5 core events');
+                console.log('📊 Tracking: message_send, message_received, content_interaction, error, session_close');
             } else {
                 console.error('❌ GTM Manager not loaded');
             }
