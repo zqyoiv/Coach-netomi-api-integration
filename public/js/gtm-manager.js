@@ -43,7 +43,7 @@ class GTMManager {
      * Get current chat session ID
      */
     getSessionId() {
-        return sessionStorage.getItem('conversationId') || 'unknown';
+        return sessionStorage.getItem('netomiConversationId') || 'unknown';
     }
 
     /**
