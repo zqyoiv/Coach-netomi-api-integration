@@ -32,11 +32,39 @@ class GTMManager {
         if (typeof dataLayer !== 'undefined') {
             this.isInitialized = true;
             console.log('✅ GTM Manager initialized - dataLayer available');
+            
+            // Fire datalayer_initialized event first
+            this.fireDataLayerInitialized();
+            
             this.flushEventQueue();
         } else {
             // Retry initialization after a short delay
             setTimeout(() => this.init(), 100);
         }
+    }
+
+    /**
+     * Fire datalayer_initialized event with session info
+     */
+    fireDataLayerInitialized() {
+        const sessionId = this.getSessionId();
+        const timestamp = new Date().toISOString();
+        
+        // Ensure dataLayer exists
+        window.dataLayer = window.dataLayer || [];
+        
+        window.dataLayer.push({
+            'event': 'datalayer_initialized',
+            'event_action': 'page_load',
+            'event_label': 'rexy_chat_initialized',
+            'store_code': '', // Empty for now - can be populated from URL params
+            'qr_code': '', // Empty for now - can be populated from URL params
+            'session_timer': timestamp,
+            'chat_session_id': sessionId,
+            'timestamp': timestamp
+        });
+        
+        console.log('🏷️ GTM Event: datalayer_initialized fired with session:', sessionId);
     }
 
     /**
