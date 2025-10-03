@@ -68,10 +68,29 @@ class GTMManager {
     }
 
     /**
-     * Get current chat session ID
+     * Get current chat session ID - creates one if it doesn't exist
      */
     getSessionId() {
-        return sessionStorage.getItem('netomiConversationId') || 'unknown';
+        let sessionId = sessionStorage.getItem('netomiConversationId');
+        
+        if (!sessionId) {
+            // Generate a new conversation ID if one doesn't exist
+            sessionId = this.generateConversationId();
+            sessionStorage.setItem('netomiConversationId', sessionId);
+            window.netomiConversationId = sessionId; // Also set on window for compatibility
+        }
+        
+        return sessionId;
+    }
+
+    /**
+     * Generate a new conversation ID
+     */
+    generateConversationId() {
+        if (window.crypto && window.crypto.randomUUID) {
+            return `chat-${window.crypto.randomUUID()}`;
+        }
+        return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
 
     /**
