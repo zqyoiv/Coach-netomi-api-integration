@@ -156,7 +156,7 @@ class GTMManager {
     trackMessageSend(messageText, messageType = 'text') {
         this.updateActivity();
         this.sendEvent('message_send', {
-            'message_text': messageText,
+            'message_text': '', // Empty string for privacy
             'message_length': messageText.length,
             'message_type': messageType, // 'text', 'sticker', 'image'
             'input_method': 'manual' // could be 'manual', 'quick_reply', etc.
@@ -188,16 +188,11 @@ class GTMManager {
             'content_id': contentDetails.id || '',
             'content_title': contentDetails.title || '',
             'content_url': contentDetails.url || '',
-            'item_position': contentDetails.position || 0, // for carousel items
-            'total_items': contentDetails.total || 0, // for carousel
             // Video-specific tracking data
             'current_time': contentDetails.current_time || 0, // video playback position in seconds
             'duration': contentDetails.duration || 0, // total video duration in seconds
             'watch_percentage': contentDetails.watch_percentage || 0, // percentage of video watched
-            'was_playing': contentDetails.was_playing || false, // was video playing when interaction occurred
             'close_method': contentDetails.close_method || '', // 'button_click', 'overlay_click', etc.
-            // Image/content-specific data
-            'size': contentDetails.size || 0 // file size for uploads
         });
     }
 

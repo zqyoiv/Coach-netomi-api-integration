@@ -685,8 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     id: 'video_close_' + Date.now(),
                     current_time: video ? video.currentTime : 0,
                     duration: video ? (video.duration || 0) : 0,
-                    watch_percentage: video && video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0,
-                    was_playing: video ? !video.paused : false
+                    watch_percentage: video && video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0
                 });
             }
             closeVideoOverlay();
@@ -790,7 +789,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         current_time: video ? video.currentTime : 0,
                         duration: video ? (video.duration || 0) : 0,
                         watch_percentage: video && video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0,
-                        was_playing: video ? !video.paused : false,
                         close_method: 'overlay_click'
                     });
                 }
@@ -1034,8 +1032,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.GTMManager) {
                 window.GTMManager.trackContentInteraction('process', 'image', {
                     title: file.name,
-                    id: 'image_' + Date.now(),
-                    size: file.size
+                    id: 'image_' + Date.now()
                 });
             }
             
