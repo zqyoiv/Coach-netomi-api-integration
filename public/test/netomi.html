@@ -289,6 +289,32 @@
     </div>
 
     <script>
+        // Function to sanitize HTML content to prevent XSS
+        function sanitizeHtml(str) {
+            if (typeof str !== 'string') {
+                str = String(str);
+            }
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/\//g, '&#x2F;');
+        }
+
+        // Function to sanitize URL to prevent XSS in href attributes
+        function sanitizeUrl(url) {
+            if (typeof url !== 'string') {
+                return '#';
+            }
+            // Only allow http/https URLs
+            if (url.match(/^https?:\/\//)) {
+                return sanitizeHtml(url);
+            }
+            return '#';
+        }
+
         // Function to format Process Message response with enhanced display
         function formatProcessMessageResponse(data) {
             let html = '<div style="font-family: monospace;">';
@@ -303,7 +329,7 @@
                 html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
                 html += `<div><strong>Status:</strong> Message sent to Netomi</div>`;
                 if (data.data.acknowledgment.requestId) {
-                    html += `<div><strong>Request ID:</strong> ${data.data.acknowledgment.requestId}</div>`;
+                    html += `<div><strong>Request ID:</strong> ${sanitizeHtml(data.data.acknowledgment.requestId)}</div>`;
                 }
                 html += '</div></div>';
             }
@@ -332,7 +358,7 @@
                     const message = webhook.message || webhook.messagePayload;
                     html += '<div style="background: #0a2f0a; border: 1px solid #00ff88; padding: 10px; border-radius: 4px; margin-bottom: 10px;">';
                     html += '<div style="color: #00ff88; font-weight: bold; margin-bottom: 8px;">💬 AI Message:</div>';
-                    html += `<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">${message.text || message.content || JSON.stringify(message)}</div>`;
+                    html += `<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">${sanitizeHtml(message.text || message.content || JSON.stringify(message))}</div>`;
                     html += '</div>';
                 }
                 
@@ -341,9 +367,9 @@
                     html += '<div style="margin-bottom: 15px;">';
                     html += '<div style="color: #20b2aa; font-weight: bold; margin-bottom: 8px;">💼 Conversation Info:</div>';
                     html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
-                    html += `<div><strong>Conversation ID:</strong> ${webhook.conversationId}</div>`;
-                    if (webhook.userId) html += `<div><strong>User ID:</strong> ${webhook.userId}</div>`;
-                    if (webhook.botId) html += `<div><strong>Bot ID:</strong> ${webhook.botId}</div>`;
+                    html += `<div><strong>Conversation ID:</strong> ${sanitizeHtml(webhook.conversationId)}</div>`;
+                    if (webhook.userId) html += `<div><strong>User ID:</strong> ${sanitizeHtml(webhook.userId)}</div>`;
+                    if (webhook.botId) html += `<div><strong>Bot ID:</strong> ${sanitizeHtml(webhook.botId)}</div>`;
                     html += '</div></div>';
                 }
                 
@@ -353,10 +379,10 @@
                 html += '<div style="margin-bottom: 15px;">';
                 html += '<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 8px;">⏰ Webhook Status:</div>';
                 html += '<div style="background: #2f0a0a; border: 1px solid #ff6b6b; padding: 10px; border-radius: 4px;">';
-                html += `<div><strong>Status:</strong> ${data.data.error}</div>`;
+                html += `<div><strong>Status:</strong> ${sanitizeHtml(data.data.error)}</div>`;
                 html += '<div><strong>Note:</strong> Only acknowledgment received. You can check for responses later using the conversation API.</div>';
                 if (data.data.requestId) {
-                    html += `<div><strong>Request ID:</strong> ${data.data.requestId}</div>`;
+                    html += `<div><strong>Request ID:</strong> ${sanitizeHtml(data.data.requestId)}</div>`;
                 }
                 html += '</div></div>';
             }
@@ -366,9 +392,9 @@
                 html += '<div style="margin-bottom: 15px;">';
                 html += '<div style="color: #ffa500; font-weight: bold; margin-bottom: 8px;">📝 Request Info:</div>';
                 html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
-                html += `<div><strong>Message:</strong> "${data.data.requestPayload.messagePayload?.text || 'N/A'}"</div>`;
-                html += `<div><strong>User ID:</strong> ${data.data.requestPayload.userDetails?.userId || 'N/A'}</div>`;
-                html += `<div><strong>Conversation ID:</strong> ${data.data.requestPayload.conversationId || 'N/A'}</div>`;
+                html += `<div><strong>Message:</strong> "${sanitizeHtml(data.data.requestPayload.messagePayload?.text || 'N/A')}"</div>`;
+                html += `<div><strong>User ID:</strong> ${sanitizeHtml(data.data.requestPayload.userDetails?.userId || 'N/A')}</div>`;
+                html += `<div><strong>Conversation ID:</strong> ${sanitizeHtml(data.data.requestPayload.conversationId || 'N/A')}</div>`;
                 html += '</div></div>';
             }
             
@@ -378,7 +404,7 @@
                 html += '<div style="color: #9370db; font-weight: bold; margin-bottom: 8px;">⚙️ Custom Fields:</div>';
                 html += '<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">';
                 Object.entries(data.data.customFields).forEach(([key, value]) => {
-                    html += `<div><strong>${key}:</strong> ${value}</div>`;
+                    html += `<div><strong>${sanitizeHtml(key)}:</strong> ${sanitizeHtml(value)}</div>`;
                 });
                 html += '</div></div>';
             }
@@ -401,10 +427,10 @@
             if (attachment.multipleSourceDetails && attachment.multipleSourceDetails.length > 0) {
                 attachment.multipleSourceDetails.forEach((source, index) => {
                     html += '<div style="margin-bottom: 5px;">';
-                    html += `<span style="color: #00ff88; font-weight: bold;">${source.index || index + 1}.</span> `;
-                    html += `<a href="${source.text}" target="_blank" style="color: #87ceeb; text-decoration: none;">${source.text}</a>`;
+                    html += `<span style="color: #00ff88; font-weight: bold;">${sanitizeHtml(source.index || index + 1)}.</span> `;
+                    html += `<a href="${sanitizeUrl(source.text)}" target="_blank" style="color: #87ceeb; text-decoration: none;">${sanitizeHtml(source.text)}</a>`;
                     if (source.uuid) {
-                        html += ` <span style="color: #666; font-size: 10px;">(${source.uuid.substring(0, 8)}...)</span>`;
+                        html += ` <span style="color: #666; font-size: 10px;">(${sanitizeHtml(source.uuid.substring(0, 8))}...)</span>`;
                     }
                     html += '</div>';
                 });
@@ -419,13 +445,13 @@
             html += '<div style="color: #20b2aa; font-weight: bold; margin-bottom: 8px;">💬 AI Text Response:</div>';
             
             if (attachment.text) {
-                html += `<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">${attachment.text}</div>`;
+                html += `<div style="background: #1a1a1a; padding: 8px; border-radius: 4px;">${sanitizeHtml(attachment.text)}</div>`;
             }
             
             if (attachment.sourceUrl) {
                 html += '<div style="margin-top: 8px;">';
                 html += '<span style="color: #20b2aa; font-weight: bold;">Source: </span>';
-                html += `<a href="${attachment.sourceUrl}" target="_blank" style="color: #87ceeb; text-decoration: none;">${attachment.sourceUrl}</a>`;
+                html += `<a href="${sanitizeUrl(attachment.sourceUrl)}" target="_blank" style="color: #87ceeb; text-decoration: none;">${sanitizeHtml(attachment.sourceUrl)}</a>`;
                 html += '</div>';
             }
             
@@ -871,19 +897,19 @@
                             
                             // Title
                             if (element.title) {
-                                html += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 6px; font-size: 13px; line-height: 1.3;">${element.title}</div>`;
+                                html += `<div style="color: #ffffff; font-weight: bold; margin-bottom: 6px; font-size: 13px; line-height: 1.3;">${sanitizeHtml(element.title)}</div>`;
                             }
                             
                             // Description
                             if (element.description && element.description !== element.title) {
-                                html += `<div style="color: #ccc; font-size: 11px; margin-bottom: 8px; line-height: 1.3;">${element.description}</div>`;
+                                html += `<div style="color: #ccc; font-size: 11px; margin-bottom: 8px; line-height: 1.3;">${sanitizeHtml(element.description)}</div>`;
                             }
                             
                             // Buttons
                             if (element.buttons && element.buttons.length > 0) {
                                 element.buttons.forEach(button => {
                                     if (button.type === "WEB" && button.url) {
-                                        html += `<a href="${button.url}" target="_blank" style="display: inline-block; background: #20b2aa; color: #000; padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: bold; margin-top: 4px; transition: background-color 0.3s;">${button.title || 'View Details'}</a>`;
+                                        html += `<a href="${sanitizeUrl(button.url)}" target="_blank" style="display: inline-block; background: #20b2aa; color: #000; padding: 6px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: bold; margin-top: 4px; transition: background-color 0.3s;">${sanitizeHtml(button.title || 'View Details')}</a>`;
                                     }
                                 });
                             }
@@ -896,7 +922,7 @@
                         
                         // Carousel info
                         html += `<div style="font-size: 11px; color: #666; margin-top: 8px;">`;
-                        html += `Aspect Ratio: ${carouselData.carouselImageAspectRatio || 'N/A'} | `;
+                        html += `Aspect Ratio: ${sanitizeHtml(carouselData.carouselImageAspectRatio || 'N/A')} | `;
                         html += `Items: ${carouselData.elements.length} | `;
                         html += `Scroll horizontally to see all items`;
                         html += `</div>`;
@@ -908,14 +934,14 @@
                     if (!aiResponseText && msg.data.message) {
                         html += `<div style="background: #0a2f0a; border: 1px solid #00ff88; padding: 8px; border-radius: 4px; margin: 8px 0;">`;
                         html += `<div style="color: #00ff88; font-weight: bold; margin-bottom: 5px;">💬 Message:</div>`;
-                        html += `<div>${typeof msg.data.message === 'string' ? msg.data.message : JSON.stringify(msg.data.message)}</div>`;
+                        html += `<div>${sanitizeHtml(typeof msg.data.message === 'string' ? msg.data.message : JSON.stringify(msg.data.message))}</div>`;
                         html += `</div>`;
                     }
                     
                     // Show test messages
                     if (msg.data.test) {
                         html += `<div style="background: #2a2a0a; border: 1px solid #ffa500; padding: 8px; border-radius: 4px; margin: 8px 0;">`;
-                        html += `<div style="color: #ffa500; font-weight: bold;">🧪 Test Message: ${msg.data.test}</div>`;
+                        html += `<div style="color: #ffa500; font-weight: bold;">🧪 Test Message: ${sanitizeHtml(msg.data.test)}</div>`;
                         html += `</div>`;
                     }
                     
@@ -923,10 +949,10 @@
                     if (msg.data.customFields) {
                         html += `<div style="margin-top: 8px; font-size: 11px; color: #666;">`;
                         if (msg.data.customFields.CHUNK_STATUS) {
-                            html += `<span style="margin-right: 10px;">Status: ${msg.data.customFields.CHUNK_STATUS}</span>`;
+                            html += `<span style="margin-right: 10px;">Status: ${sanitizeHtml(msg.data.customFields.CHUNK_STATUS)}</span>`;
                         }
                         if (msg.data.customFields.TRANSLATE_LANGUAGE) {
-                            html += `<span style="margin-right: 10px;">Language: ${msg.data.customFields.TRANSLATE_LANGUAGE}</span>`;
+                            html += `<span style="margin-right: 10px;">Language: ${sanitizeHtml(msg.data.customFields.TRANSLATE_LANGUAGE)}</span>`;
                         }
                         html += `</div>`;
                     }
@@ -936,7 +962,7 @@
                 const isOpen = openDetails.has(messageIndex.toString());
                 html += `<details ${isOpen ? 'open' : ''} style="margin-top: 8px;">`;
                 html += `<summary style="color: #666; cursor: pointer; font-size: 11px;">📋 Raw Data</summary>`;
-                html += `<pre style="background: #0a0a0a; padding: 8px; border-radius: 4px; margin-top: 5px; overflow-x: auto; font-size: 10px;">${JSON.stringify(msg.data, null, 2)}</pre>`;
+                html += `<pre style="background: #0a0a0a; padding: 8px; border-radius: 4px; margin-top: 5px; overflow-x: auto; font-size: 10px;">${sanitizeHtml(JSON.stringify(msg.data, null, 2))}</pre>`;
                 html += `</details>`;
                 
                 html += `</div>`;

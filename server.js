@@ -886,7 +886,10 @@ app.get('/', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
 app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
 
-app.get('/netomi', (_req, res) => res.sendFile('netomi.html', { root: 'public' }));
+app.get('/netomi', (_req, res) => res.sendFile('netomi.html', { root: 'public/test' }));
+
+// Test files routes
+app.get('/gtm-test', (_req, res) => res.sendFile('gtm-test.html', { root: 'public/test' }));
 
 // Test endpoint to trigger connection error overlay
 app.get('/test-disconnect', (_req, res) => {
