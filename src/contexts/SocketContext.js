@@ -22,7 +22,8 @@ export const SocketProvider = ({ children }) => {
     console.log('[Socket] Initializing Socket.IO connection...');
     
     // Create Socket.IO connection with resilient options (matching netomi-integration.js)
-    const socketInstance = io('http://localhost:3001', {
+    // No URL parameter - connects to same origin automatically
+    const socketInstance = io({
       transports: ['websocket'], // prefer WS
       upgrade: false,
       reconnection: true,

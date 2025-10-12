@@ -19,11 +19,10 @@ const io = new Server(httpServer, {
   pingTimeout: 60000,  // allow up to 60s without pong before closing
 });
 
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true
-}));
 app.use(express.json({ limit: '1mb' }));
+// Serve React build folder
+app.use(express.static('build'));
+// Serve public folder for legacy HTML and assets
 app.use(express.static('public'));
 
 // ------------------------------
@@ -888,7 +887,7 @@ app.post('/api/netomi/process-message', async (req, res) => {
 
 
 // Serve React app
-app.get('/', (_req, res) => res.sendFile('index.html', { root: 'public' }));
+app.get('/', (_req, res) => res.sendFile('index.html', { root: 'build' }));
 
 // Legacy routes for original HTML version
 app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));

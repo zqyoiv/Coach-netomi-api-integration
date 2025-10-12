@@ -4,9 +4,9 @@
   "description": "React version of Rexy Chat application",
   "main": "src/index.js",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
     "eject": "react-scripts eject"
   },
   "dependencies": {
@@ -32,8 +32,10 @@
     ]
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
-    "@testing-library/user-event": "^13.5.0"
+    "@testing-library/user-event": "^13.5.0",
+    "http-proxy-middleware": "^3.0.5"
   }
 }

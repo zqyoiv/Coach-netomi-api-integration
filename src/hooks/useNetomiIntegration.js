@@ -158,7 +158,7 @@ const useNetomiIntegration = () => {
   // Test server connection
   const testServerConnection = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/netomi/test-connection');
+      const response = await fetch('/api/netomi/test-connection');
       const result = await response.json();
       
       if (!response.ok) {
@@ -231,7 +231,7 @@ const useNetomiIntegration = () => {
       // Ensure socket is connected before sending message
       await ensureConnected(3000);
       
-      const response = await fetch('http://localhost:3001/api/netomi/process-message', {
+      const response = await fetch('/api/netomi/process-message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

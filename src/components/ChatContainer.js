@@ -3,6 +3,8 @@ import ChatHeader from './ChatHeader';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import ConnectionErrorOverlay from './ConnectionErrorOverlay';
+import PhotoOverlay from './PhotoOverlay';
+import VideoOverlay from './VideoOverlay';
 import { useNetomiIntegration } from '../hooks/useNetomiIntegration';
 import { useAnimationManager } from '../hooks/useAnimationManager';
 import { useGTMManager } from '../hooks/useGTMManager';
@@ -14,6 +16,8 @@ import '../styles/ChatInput.css';
 const ChatContainer = () => {
   const [messages, setMessages] = useState([]);
   const [showConnectionError, setShowConnectionError] = useState(false);
+  const [photoOverlayImage, setPhotoOverlayImage] = useState(null);
+  const [videoOverlayData, setVideoOverlayData] = useState(null);
   const chatMessagesRef = useRef(null);
   
   const netomiIntegration = useNetomiIntegration();
@@ -44,6 +48,26 @@ const ChatContainer = () => {
     unregisterWebhookHandler
   } = netomiIntegration;
 
+  // Define functions before useEffect to avoid hoisting issues
+  const showWelcomeSequence = () => {
+    const welcomeGifMessage = {
+      id: 'welcome',
+      type: 'bot',
+      content: '',
+      isWelcome: true,
+      timestamp: Date.now()
+    };
+    
+    const welcomeTextMessage = {
+      id: 'welcome-text',
+      type: 'bot',
+      content: "Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!",
+      timestamp: Date.now()
+    };
+    
+    setMessages([welcomeGifMessage, welcomeTextMessage]);
+  };
+
   useEffect(() => {
     // Check for test disconnect parameter
     const urlParams = new URLSearchParams(window.location.search);
@@ -53,13 +77,8 @@ const ChatContainer = () => {
       }, 1000);
     }
 
-    // Show welcome GIF first
-    showWelcomeGif();
-    
-    // Add greeting message after 1 second (no quick replies)
-    setTimeout(() => {
-      addWelcomeMessage();
-    }, 1000);
+    // Show complete welcome sequence (GIF + greeting message)
+    showWelcomeSequence();
   }, []);
 
   // Handle socket connection errors
@@ -105,26 +124,6 @@ const ChatContainer = () => {
     };
   }, [hideThinkingInChat, extractAllAIResponseTexts, extractImageData, extractCarouselData, registerWebhookHandler, unregisterWebhookHandler]);
 
-  const showWelcomeGif = () => {
-    const welcomeMessage = {
-      id: 'welcome',
-      type: 'bot',
-      content: '',
-      isWelcome: true,
-      timestamp: Date.now()
-    };
-    setMessages([welcomeMessage]);
-  };
-
-  const addWelcomeMessage = () => {
-    const welcomeTextMessage = {
-      id: 'welcome-text',
-      type: 'bot',
-      content: "Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!",
-      timestamp: Date.now()
-    };
-    setMessages(prev => [...prev, welcomeTextMessage]);
-  };
 
   const addMessage = (text, isUser = true, options = {}) => {
     const message = {
@@ -227,6 +226,41 @@ const ChatContainer = () => {
     setMessages(prev => [...prev, carouselMessage]);
   };
 
+  // Handle image click to open photo overlay (matching rexy.js functionality)
+  const handleImageClick = (imageSrc) => {
+    setPhotoOverlayImage(imageSrc);
+  };
+
+  const handleClosePhotoOverlay = () => {
+    const overlay = document.getElementById('single-photo-overlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        setPhotoOverlayImage(null);
+      }, 300);
+    } else {
+      setPhotoOverlayImage(null);
+    }
+  };
+
+  // Handle video click to open video overlay
+  const handleVideoClick = (videoUrl, title) => {
+    console.log('[ChatContainer] Video clicked:', videoUrl, title);
+    setVideoOverlayData({ videoUrl, title });
+  };
+
+  const handleCloseVideoOverlay = () => {
+    const overlay = document.getElementById('video-overlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        setVideoOverlayData(null);
+      }, 300);
+    } else {
+      setVideoOverlayData(null);
+    }
+  };
+
   return (
     <div className="chat-container">
       <ChatHeader />
@@ -242,6 +276,8 @@ const ChatContainer = () => {
         renderWelcomeAnimation={renderWelcomeAnimation}
         renderThinkingInChat={renderThinkingInChat}
         isThinkingInChat={isThinkingInChat}
+        onImageClick={handleImageClick}
+        onVideoClick={handleVideoClick}
       />
       
       <ChatInput onSendMessage={handleSendMessage} />
@@ -249,6 +285,23 @@ const ChatContainer = () => {
       {/* Animation Overlays */}
       {renderThinkingOverlay()}
       {renderWatchReelOverlay()}
+      
+      {/* Photo Overlay */}
+      {photoOverlayImage && (
+        <PhotoOverlay 
+          imageSrc={photoOverlayImage}
+          onClose={handleClosePhotoOverlay}
+        />
+      )}
+      
+      {/* Video Overlay */}
+      {videoOverlayData && (
+        <VideoOverlay 
+          videoUrl={videoOverlayData.videoUrl}
+          title={videoOverlayData.title}
+          onClose={handleCloseVideoOverlay}
+        />
+      )}
     </div>
   );
 };

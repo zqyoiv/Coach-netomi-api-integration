@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Message = ({ message, renderWelcomeAnimation, renderThinkingInChat }) => {
+const Message = ({ message, renderWelcomeAnimation, renderThinkingInChat, onImageClick, onVideoClick }) => {
   const { type, content, isWelcome, isTyping, isHtml, isSticker, imageSrc, isCarousel, carouselData } = message;
 
   if (isWelcome) {
@@ -31,6 +31,13 @@ const Message = ({ message, renderWelcomeAnimation, renderThinkingInChat }) => {
             src={imageSrc} 
             alt="Response image" 
             className="sticker"
+            style={{ cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onImageClick) {
+                onImageClick(imageSrc);
+              }
+            }}
             onError={(e) => {
               // If image doesn't load, show error message instead
               e.target.style.display = 'none';
@@ -55,7 +62,16 @@ const Message = ({ message, renderWelcomeAnimation, renderThinkingInChat }) => {
                 <div key={index} className="carousel-item">
                   {element.videoUrl && element.thumbnailUrl ? (
                     // Video element
-                    <div className="carousel-video-container video-only">
+                    <div 
+                      className="carousel-video-container video-only"
+                      style={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onVideoClick) {
+                          onVideoClick(element.videoUrl, element.title || 'Video');
+                        }
+                      }}
+                    >
                       <img 
                         src={element.thumbnailUrl} 
                         alt={element.title || 'Video thumbnail'} 
@@ -70,6 +86,12 @@ const Message = ({ message, renderWelcomeAnimation, renderThinkingInChat }) => {
                       alt={element.title || 'Product image'} 
                       className="carousel-image"
                       style={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onImageClick) {
+                          onImageClick(element.imageUrl);
+                        }
+                      }}
                     />
                   ) : null}
                 </div>

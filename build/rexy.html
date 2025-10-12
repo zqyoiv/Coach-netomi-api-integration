@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-N2DZV2ZF');</script>
+    <!-- End Google Tag Manager -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Rexy - Coach</title>
+    <link rel="stylesheet" href="css/rexy.css">
+    <link rel="stylesheet" href="css/message.css">
+    <link rel="stylesheet" href="css/photo.css">
+    <link rel="stylesheet" href="css/camera.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/viewport.js"></script>
+    <script src="js/preloader.js"></script>
+    <script src="js/test-assets.js"></script>
+    <script src="js/photo.js"></script>
+    <script src="js/gtm-manager.js"></script>
+    <script src="js/netomi-integration.js"></script>
+    <script src="js/animation-manager.js"></script>
+    <script src="js/rexy.js"></script>
+    
+    <!-- GTM Initialization Script -->
+    <script>
+        // Wait for GTM Manager to load and verify it's working
+        window.addEventListener('load', function() {
+            // Check if GTM Manager exists
+            if (window.GTMManager) {
+                console.log('✅ GTM Manager loaded successfully with 5 core events');
+                console.log('📊 Tracking: message_send, message_received, content_interaction, error, session_close');
+            } else {
+                console.error('❌ GTM Manager not loaded');
+            }
+        });
+    </script>
+</head>
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N2DZV2ZF" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="rexy-avatar-container">
+                    <img src="image/rexy-icon.png" alt="Rexy" class="rexy-avatar">
+                </div>
+                <div class="header-center">
+                    <img src="image/coach/coach-logo.svg" alt="Coach" class="coach-header-logo">
+                    <img src="image/coach/shop-with-rexy.png" alt="Shop with Rexy" class="shop-with-rexy-text">
+                </div>
+                <div class="bag-container">
+                    <img src="image/coach/teri-logo-s.svg" alt="Bag" class="bag-icon">
+                    <span class="teri-text">TERI</span>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Connection Error Overlay -->
+        <div class="connection-error-overlay" id="connectionErrorOverlay" style="display: none;">
+            <div class="error-message-container">
+                <p class="error-message">Please reload to chat with rexy again</p>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages">
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-container">
+            <div class="input-wrapper">
+                <!-- Image preview area -->
+                <div class="image-preview-container" id="imagePreviewContainer" style="display: none;"></div>
+                
+                <textarea class="chat-input" placeholder="Ask your Teri questions here..." rows="1"></textarea>
+                <div class="button-row">
+                    <button class="add-button" id="addButton">
+                        <img src="image/ui-icon/add.svg" alt="Add" class="icon">
+                    </button>
+                    <button class="send-button">
+                        <img src="image/ui-icon/send.svg" alt="Send" class="icon">
+                    </button>
+                </div>
+                
+                <!-- Photo options popup -->
+                <div class="photo-options-popup" id="photoOptionsPopup">
+                    <button class="photo-option" id="cameraOption">
+                        <span>Camera</span>
+                    </button>
+                    <button class="photo-option" id="photoOption">
+                        <span>Photos</span>
+                    </button>
+                </div>
+                
+                <!-- Hidden file inputs -->
+                <input type="file" id="cameraInput" class="hidden-input" accept="image/*" capture="environment">
+                <input type="file" id="photoInput" class="hidden-input" accept="image/*" multiple>
+            </div>
+            <div class="terms-footer">
+                <span>By using this app, you agree to the </span>
+                <a href="#" class="terms-link">Terms of Use</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
