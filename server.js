@@ -2,14 +2,34 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
-import { createServer } from 'http';
+import { createServer as createHttpServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import { Server } from 'socket.io';
 import fs from 'fs/promises';
 import path from 'path';
 import { sanitizeForLog, isValidConversationId, isValidSocketId } from './utils/log-sanitizer.js';
 
 const app = express();
-const httpServer = createServer(app);
+
+// Use HTTPS in production if SSL certificates are available, otherwise use HTTP for development
+let httpServer;
+try {
+  // Try to load SSL certificates (create these files for production)
+  // For local development without HTTPS, this will fail and fall back to HTTP
+  const sslKey = await fs.readFile('./ssl/key.pem', 'utf8').catch(() => null);
+  const sslCert = await fs.readFile('./ssl/cert.pem', 'utf8').catch(() => null);
+  
+  if (sslKey && sslCert) {
+    httpServer = createHttpsServer({ key: sslKey, cert: sslCert }, app);
+    console.log('✅ HTTPS server enabled (SSL certificates loaded)');
+  } else {
+    httpServer = createHttpServer(app);
+    console.log('⚠️  HTTP server enabled (no SSL certificates found - OK for local development)');
+  }
+} catch (err) {
+  httpServer = createHttpServer(app);
+  console.log('⚠️  HTTP server enabled (no SSL certificates found - OK for local development)');
+}
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
