@@ -899,8 +899,8 @@ app.post('/api/netomi/process-message', async (req, res) => {
 // Serve React app
 app.get('/', (_req, res) => res.sendFile('index.html', { root: 'build' }));
 
-// Legacy routes for original HTML version
-app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
+// Rexy route now points to React version
+app.get('/rexy', (_req, res) => res.sendFile('index.html', { root: 'build' }));
 
 app.get('/netomi', (_req, res) => res.sendFile('netomi.html', { root: 'public/test' }));
 
@@ -909,7 +909,7 @@ app.get('/gtm-test', (_req, res) => res.sendFile('gtm-test.html', { root: 'publi
 
 // Test endpoint to trigger connection error overlay
 app.get('/test-disconnect', (_req, res) => {
-  res.redirect('/rexy?test_disconnect=true');
+  res.redirect('/?test_disconnect=true');
 });
 
 // Test endpoint to verify webhook endpoint is accessible
