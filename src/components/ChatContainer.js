@@ -48,6 +48,14 @@ const ChatContainer = () => {
 
   // Define functions before useEffect to avoid hoisting issues
   const showWelcomeSequence = () => {
+    // Track welcome sequence start with GTM (matching vanilla JS rexy.js lines 1273-1279)
+    if (gtmManager.trackContentInteraction) {
+      gtmManager.trackContentInteraction('display', 'welcome_gif', {
+        title: 'Rexy Welcome Animation',
+        id: 'welcome_start'
+      });
+    }
+    
     const welcomeGifMessage = {
       id: 'welcome',
       type: 'bot',
@@ -64,6 +72,18 @@ const ChatContainer = () => {
     };
     
     setMessages([welcomeGifMessage, welcomeTextMessage]);
+    
+    // Track welcome sequence complete with GTM (matching vanilla JS rexy.js lines 1288-1296)
+    setTimeout(() => {
+      if (gtmManager.trackMessageReceived) {
+        gtmManager.trackMessageReceived(
+          "Rawr! Rexy here. Wanna chat Teri? You can ask me anything about the bag!",
+          'text',
+          false
+        );
+        gtmManager.incrementMessagesReceived();
+      }
+    }, 1000);
   };
 
   useEffect(() => {
@@ -134,11 +154,19 @@ const ChatContainer = () => {
 
     setMessages(prev => [...prev, message]);
 
-    // Track with GTM
+    // Track with GTM (matching vanilla JS rexy.js lines 69-82)
     if (isUser) {
-      gtmManager.trackMessageSend(text, 'text');
+      if (gtmManager.trackMessageSend) {
+        gtmManager.trackMessageSend(text, options.isSticker ? 'sticker' : 'text');
+        gtmManager.incrementMessagesSent();
+      }
     } else {
-      gtmManager.trackMessageReceived(text, 'text', false);
+      if (gtmManager.trackMessageReceived) {
+        const messageType = options.isHtml ? 'html' : 'text';
+        const hasContent = options.isHtml || text.includes('carousel') || text.includes('image') || text.includes('video');
+        gtmManager.trackMessageReceived(text, messageType, hasContent);
+        gtmManager.incrementMessagesReceived();
+      }
     }
 
     // Scroll to bottom
@@ -171,7 +199,15 @@ const ChatContainer = () => {
       }
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      debug.error('Error sending message:', error);
+      
+      // Track API error with GTM (matching vanilla JS rexy.js lines 382-388)
+      if (gtmManager.trackError) {
+        gtmManager.trackError('api', 'Netomi API error', {
+          source: 'message_send',
+          message: error.message || String(error)
+        });
+      }
       
       // Stop thinking animation on error
       stopThinkingAnimation();
@@ -222,11 +258,29 @@ const ChatContainer = () => {
   };
 
   // Handle image click to open photo overlay (matching rexy.js functionality)
-  const handleImageClick = (imageSrc) => {
+  const handleImageClick = (imageSrc, title = 'Image') => {
+    // Track image interaction (matching vanilla JS rexy.js lines 610-621)
+    if (gtmManager.trackContentInteraction) {
+      gtmManager.trackContentInteraction('tap', 'image', {
+        title: title,
+        url: imageSrc,
+        id: 'image_tap_' + Date.now()
+      });
+    }
     setPhotoOverlayImage(imageSrc);
   };
 
-  const handleClosePhotoOverlay = () => {
+  const handleClosePhotoOverlay = (imageSrc, closeMethod = 'button_click') => {
+    // Track image close interaction (matching vanilla JS rexy.js lines 854-866)
+    if (gtmManager.trackContentInteraction && imageSrc) {
+      gtmManager.trackContentInteraction('close', 'image', {
+        title: 'Image',
+        url: imageSrc,
+        id: 'image_close_' + Date.now(),
+        close_method: closeMethod
+      });
+    }
+    
     const overlay = document.getElementById('single-photo-overlay');
     if (overlay) {
       overlay.classList.remove('show');
@@ -241,13 +295,36 @@ const ChatContainer = () => {
   // Handle video click to open video overlay (matching vanilla JS)
   const handleVideoClick = (videoUrl, title) => {
     debug.log('[ChatContainer] Video clicked:', videoUrl, title);
+    
+    // Track video tap interaction (matching vanilla JS rexy.js lines 584-595)
+    if (gtmManager.trackContentInteraction) {
+      gtmManager.trackContentInteraction('tap', 'video', {
+        title: title || 'Video',
+        url: videoUrl,
+        id: 'carousel_video_' + Date.now()
+      });
+    }
+    
     setVideoOverlayData({ videoUrl, title });
     
     // Show watch reel animation when video opens (matching vanilla JS)
     showWatchReelAnimation();
   };
 
-  const handleCloseVideoOverlay = () => {
+  const handleCloseVideoOverlay = (videoUrl, title, currentTime = 0, duration = 0, closeMethod = 'button_click') => {
+    // Track video close interaction (matching vanilla JS rexy.js lines 674-688)
+    if (gtmManager.trackContentInteraction && videoUrl) {
+      gtmManager.trackContentInteraction('close', 'video', {
+        title: title || 'Video',
+        url: videoUrl,
+        id: 'video_close_' + Date.now(),
+        current_time: currentTime,
+        duration: duration,
+        watch_percentage: duration ? Math.round((currentTime / duration) * 100) : 0,
+        close_method: closeMethod
+      });
+    }
+    
     const overlay = document.getElementById('video-overlay');
     if (overlay) {
       overlay.classList.remove('show');

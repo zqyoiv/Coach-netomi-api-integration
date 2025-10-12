@@ -13,18 +13,21 @@ const PhotoOverlay = ({ imageSrc, onClose }) => {
 
   const handleOverlayClick = (e) => {
     if (e.target.className === 'photo-overlay show') {
-      onClose();
+      // Close with overlay_click method for GTM tracking
+      onClose(imageSrc, 'overlay_click');
     }
   };
 
   const handleCloseClick = (e) => {
     e.stopPropagation();
-    onClose();
+    // Close with button_click method for GTM tracking
+    onClose(imageSrc, 'button_click');
   };
 
   const handleImageClick = (e) => {
     e.stopPropagation();
-    onClose();
+    // Close with image_click method for GTM tracking
+    onClose(imageSrc, 'image_click');
   };
 
   return (

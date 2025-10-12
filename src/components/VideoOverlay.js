@@ -1,7 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import { useGTMManager } from '../hooks/useGTMManager';
+import debug from '../utils/debug';
 
 const VideoOverlay = ({ videoUrl, title, onClose }) => {
   const videoRef = useRef(null);
+  const gtmManager = useGTMManager();
 
   useEffect(() => {
     // Add show class after mount for fade-in animation
@@ -12,24 +15,98 @@ const VideoOverlay = ({ videoUrl, title, onClose }) => {
       }, 10);
     }
 
-    // Cleanup video on unmount
-    return () => {
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.src = '';
-      }
+    // Add GTM tracking for video events (matching vanilla JS rexy.js lines 723-762)
+    const video = videoRef.current;
+    if (video) {
+      // Track video play event
+      const handlePlay = () => {
+        if (gtmManager.trackContentInteraction) {
+          gtmManager.trackContentInteraction('play', 'video', {
+            title: title || 'Video',
+            url: videoUrl,
+            id: 'video_play_' + Date.now(),
+            current_time: video.currentTime,
+            duration: video.duration || 0
+          });
+        }
+      };
+
+      // Track video pause event
+      const handlePause = () => {
+        if (gtmManager.trackContentInteraction) {
+          gtmManager.trackContentInteraction('pause', 'video', {
+            title: title || 'Video',
+            url: videoUrl,
+            id: 'video_pause_' + Date.now(),
+            current_time: video.currentTime,
+            duration: video.duration || 0,
+            watch_percentage: video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0
+          });
+        }
+      };
+
+      // Track video ended event
+      const handleEnded = () => {
+        if (gtmManager.trackContentInteraction) {
+          gtmManager.trackContentInteraction('ended', 'video', {
+            title: title || 'Video',
+            url: videoUrl,
+            id: 'video_ended_' + Date.now(),
+            current_time: video.currentTime,
+            duration: video.duration || 0,
+            watch_percentage: 100
+          });
+        }
+      };
+
+      // Track video error
+      const handleError = () => {
+        debug.error('[VideoOverlay] Video failed to load:', videoUrl);
+        if (gtmManager.trackError) {
+          gtmManager.trackError('media', 'Video failed to load', {
+            source: 'video_overlay',
+            url: videoUrl,
+            title: title
+          });
+        }
+      };
+
+      video.addEventListener('play', handlePlay);
+      video.addEventListener('pause', handlePause);
+      video.addEventListener('ended', handleEnded);
+      video.addEventListener('error', handleError);
+
+      // Cleanup video and listeners on unmount
+      return () => {
+        video.removeEventListener('play', handlePlay);
+        video.removeEventListener('pause', handlePause);
+        video.removeEventListener('ended', handleEnded);
+        video.removeEventListener('error', handleError);
+        video.pause();
+        video.src = '';
+      };
+    }
+  }, [videoUrl, title, gtmManager]);
+
+  const getVideoData = () => {
+    const video = videoRef.current;
+    return {
+      currentTime: video ? video.currentTime : 0,
+      duration: video ? (video.duration || 0) : 0
     };
-  }, []);
+  };
 
   const handleOverlayClick = (e) => {
     if (e.target.className === 'photo-overlay show' || e.target.id === 'video-overlay') {
-      onClose();
+      const { currentTime, duration } = getVideoData();
+      onClose(videoUrl, title, currentTime, duration, 'overlay_click');
     }
   };
 
   const handleCloseClick = (e) => {
     e.stopPropagation();
-    onClose();
+    const { currentTime, duration } = getVideoData();
+    onClose(videoUrl, title, currentTime, duration, 'button_click');
   };
 
   return (

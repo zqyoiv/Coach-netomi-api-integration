@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import debug from '../utils/debug';
 
 const useNetomiIntegration = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -104,6 +105,7 @@ const useNetomiIntegration = () => {
             attachment.attachment &&
             attachment.attachment.largeImageUrl) {
           
+          debug.log('[Netomi] Found image attachment:', attachment.attachment);
           return {
             imageUrl: attachment.attachment.largeImageUrl,
             title: attachment.attachment.title || null,
@@ -112,9 +114,10 @@ const useNetomiIntegration = () => {
         }
       }
 
+      debug.log('[Netomi] No image attachment found in webhook');
       return null;
     } catch (error) {
-      console.error('[Netomi] Error extracting image data:', error);
+      debug.error('[Netomi] Error extracting image data:', error);
       return null;
     }
   }, []);
