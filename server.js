@@ -20,6 +20,9 @@ const io = new Server(httpServer, {
   pingTimeout: 60000,  // allow up to 60s without pong before closing
 });
 
+// Disable X-Powered-By header for security (CWE-200: Information Exposure)
+app.disable('x-powered-by');
+
 app.use(express.json({ limit: '1mb' }));
 // Serve React build folder
 app.use(express.static('build'));
