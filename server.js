@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import fs from 'fs/promises';
 import path from 'path';
+import { sanitizeForLog, isValidConversationId, isValidSocketId } from './utils/log-sanitizer.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -865,12 +866,21 @@ app.post('/api/netomi/process-message', async (req, res) => {
     try {
       const convId = messageData && messageData.conversationId;
       if (convId && typeof convId === 'string' && clientSocketId) {
+        // Validate conversationId format for security
+        if (!isValidConversationId(convId)) {
+          console.warn(`[Routing] Invalid conversationId format rejected: ${sanitizeForLog(convId)}`);
+          return res.status(400).json({ 
+            ok: false, 
+            error: 'Invalid conversation ID format. Use only alphanumeric, dash, underscore, and dot characters.' 
+          });
+        }
+        
         conversationToSocket.set(convId, clientSocketId);
         const client = connectedClients.get(clientSocketId);
         if (client) {
           if (!client.conversationIds) client.conversationIds = new Set();
           client.conversationIds.add(convId);
-          console.log(`[Routing] conversationId ${convId} mapped to socket ${clientSocketId}`);
+          console.log(`[Routing] conversationId ${sanitizeForLog(convId)} mapped to socket ${sanitizeForLog(clientSocketId)}`);
         }
       }
     } catch (_) {}
@@ -991,14 +1001,14 @@ io.on('connection', (socket) => {
   
   // Handle client disconnect
   socket.on('disconnect', (reason) => {
-    console.log(`[Socket.IO] Client disconnected: ${socket.id}, reason: ${reason}`);
+    console.log(`[Socket.IO] Client disconnected: ${sanitizeForLog(socket.id)}, reason: ${sanitizeForLog(reason)}`);
     const client = connectedClients.get(socket.id);
     if (client && client.conversationIds) {
       client.conversationIds.forEach((convId) => {
         const mapped = conversationToSocket.get(convId);
         if (mapped === socket.id) {
           conversationToSocket.delete(convId);
-          console.log(`[Routing] Unmapped conversation ${convId} from socket ${socket.id}`);
+          console.log(`[Routing] Unmapped conversation ${sanitizeForLog(convId)} from socket ${sanitizeForLog(socket.id)}`);
         }
       });
     }
@@ -1033,19 +1043,19 @@ function broadcastWebhookUpdate(webhookMessage) {
   const targetSocketId = conversationToSocket.get(convId);
   
   if (!targetSocketId) {
-    console.warn(`[Socket.IO] No socket found for conversation ${convId} (deliveryId=${deliveryId})`);
+    console.warn(`[Socket.IO] No socket found for conversation ${sanitizeForLog(convId)} (deliveryId=${deliveryId})`);
     return;
   }
 
   if (!connectedClients.has(targetSocketId)) {
-    console.warn(`[Socket.IO] Socket ${targetSocketId} no longer connected for conversation ${convId} (deliveryId=${deliveryId})`);
+    console.warn(`[Socket.IO] Socket ${sanitizeForLog(targetSocketId)} no longer connected for conversation ${sanitizeForLog(convId)} (deliveryId=${deliveryId})`);
     // Clean up stale mapping
     conversationToSocket.delete(convId);
     return;
   }
 
   // Send only to the targeted socket
-  console.log(`[Socket.IO] Targeted send for conversation ${convId} to socket ${targetSocketId} (deliveryId=${deliveryId})`);
+  console.log(`[Socket.IO] Targeted send for conversation ${sanitizeForLog(convId)} to socket ${sanitizeForLog(targetSocketId)} (deliveryId=${deliveryId})`);
   const client = connectedClients.get(targetSocketId);
   sendWithRetry(client, targetSocketId, 1);
 
@@ -1055,32 +1065,32 @@ function broadcastWebhookUpdate(webhookMessage) {
         .timeout(10000)
         .emit('webhook_update', eventData, (err, ack) => {
           if (err) {
-            console.warn(`[Socket.IO] Ack timeout for client ${clientId} on attempt ${attempt} (deliveryId=${deliveryId})`);
+            console.warn(`[Socket.IO] Ack timeout for client ${sanitizeForLog(clientId)} on attempt ${attempt} (deliveryId=${deliveryId})`);
             if (attempt < 2) {
               // Check connection and retry once
               if (client.socket.connected) {
-                console.log(`[Socket.IO] Retrying send to ${clientId} (deliveryId=${deliveryId})`);
+                console.log(`[Socket.IO] Retrying send to ${sanitizeForLog(clientId)} (deliveryId=${deliveryId})`);
                 sendWithRetry(client, clientId, attempt + 1);
               } else {
-                console.warn(`[Socket.IO] Client ${clientId} not connected; skipping retry`);
+                console.warn(`[Socket.IO] Client ${sanitizeForLog(clientId)} not connected; skipping retry`);
                 // Clean up mapping if client disconnected
                 if (conversationToSocket.get(convId) === clientId) {
                   conversationToSocket.delete(convId);
-                  console.log(`[Routing] Cleaned up mapping for conversation ${convId} from disconnected socket ${clientId}`);
+                  console.log(`[Routing] Cleaned up mapping for conversation ${sanitizeForLog(convId)} from disconnected socket ${sanitizeForLog(clientId)}`);
                 }
               }
             }
             return;
           }
-          console.log(`[Socket.IO] Ack received from client ${clientId} (deliveryId=${deliveryId})`, ack);
+          console.log(`[Socket.IO] Ack received from client ${sanitizeForLog(clientId)} (deliveryId=${deliveryId})`);
         });
     } catch (error) {
-      console.error(`[Socket.IO] Failed to send to client ${clientId}:`, error);
+      console.error(`[Socket.IO] Failed to send to client ${sanitizeForLog(clientId)}:`, error);
       connectedClients.delete(clientId);
       // Clean up conversation mapping if this was the mapped socket
       if (conversationToSocket.get(convId) === clientId) {
         conversationToSocket.delete(convId);
-        console.log(`[Routing] Cleaned up mapping for conversation ${convId} from failed socket ${clientId}`);
+        console.log(`[Routing] Cleaned up mapping for conversation ${sanitizeForLog(convId)} from failed socket ${sanitizeForLog(clientId)}`);
       }
     }
   }
