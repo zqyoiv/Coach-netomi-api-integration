@@ -39,6 +39,10 @@ const io = new Server(httpServer, {
   // Increase heartbeat tolerances to reduce ping timeouts on slow networks or throttled tabs
   pingInterval: 25000, // server ping every 25s
   pingTimeout: 60000,  // allow up to 60s without pong before closing
+  // Render.com requires these settings for WebSocket support behind load balancer
+  transports: ['websocket', 'polling'], // Try WebSocket first, fall back to polling
+  allowEIO3: true, // Support older Engine.IO clients if needed
+  path: '/socket.io/', // Explicit path for clarity
 });
 
 // Disable X-Powered-By header for security (CWE-200: Information Exposure)

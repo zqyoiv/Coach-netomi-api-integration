@@ -20,28 +20,29 @@ export const SocketProvider = ({ children }) => {
   const webhookHandlerRef = useRef(null);
 
   useEffect(() => {
-    console.log('[Socket] Initializing Socket.IO connection...');
+    debug.log('[Socket] Initializing Socket.IO connection...');
     
     // Create Socket.IO connection with resilient options (matching netomi-integration.js)
     // No URL parameter - connects to same origin automatically
     const socketInstance = io({
-      transports: ['websocket'], // prefer WS
-      upgrade: false,
+      transports: ['websocket', 'polling'], // Try WebSocket first, fall back to polling (required for Render)
+      upgrade: true, // Allow transport upgrade
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000 // connection timeout
+      timeout: 20000, // connection timeout
+      path: '/socket.io/' // Explicit path matching server config
     });
 
     // Connection event handlers
     socketInstance.on('connect', () => {
-      console.log(`[Socket] Connected: ${socketInstance.id}`);
+      debug.log(`[Socket] Connected: ${socketInstance.id}`);
       setIsConnected(true);
       setConnectionError(false);
       
       // Send client info (matching netomi-integration.js)
-      console.log('[Socket] Sending client info...');
+      debug.log('[Socket] Sending client info...');
       socketInstance.emit('authenticate', {
         clientInfo: {
           userAgent: navigator.userAgent,
@@ -52,23 +53,23 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('connected', (data) => {
-      console.log('[Socket] Initial connection confirmed:', data);
+      debug.log('[Socket] Initial connection confirmed:', data);
     });
 
     socketInstance.on('authenticated', (data) => {
-      console.log('[Socket] Authenticated:', data);
+      debug.log('[Socket] Authenticated:', data);
     });
 
     // Webhook update handler (matching rexy.js)
     socketInstance.on('webhook_update', (data, serverAck) => {
-      console.log('[Socket] Received webhook update:', data);
+      debug.log('[Socket] Received webhook update:', data);
       
       if (data.message && data.message.data) {
         // Call the webhook handler if it's registered
         if (webhookHandlerRef.current) {
           webhookHandlerRef.current(data.message.data);
         } else {
-          console.warn('[Socket] Webhook handler not registered yet');
+          debug.warn('[Socket] Webhook handler not registered yet');
         }
       }
 
@@ -78,12 +79,12 @@ export const SocketProvider = ({ children }) => {
           serverAck({ ok: true, receivedAt: Date.now(), deliveryId: data && data.deliveryId });
         }
       } catch (e) {
-        console.warn('[Socket] Failed to acknowledge webhook:', e);
+        debug.warn('[Socket] Failed to acknowledge webhook:', e);
       }
     });
 
     socketInstance.on('disconnect', (reason) => {
-      console.log(`[Socket] Disconnected: ${reason}`);
+      debug.log(`[Socket] Disconnected: ${reason}`);
       setIsConnected(false);
       
       // Show connection error for transport errors or ping timeouts
@@ -96,13 +97,13 @@ export const SocketProvider = ({ children }) => {
         try {
           socketInstance.connect();
         } catch (e) {
-          console.warn('[Socket] Failed to reconnect:', e);
+          debug.warn('[Socket] Failed to reconnect:', e);
         }
       }
     });
 
     socketInstance.on('connect_error', (error) => {
-      console.error('[Socket] Connection error:', error);
+      debug.error('[Socket] Connection error:', error);
       setIsConnected(false);
       
       // Show connection error for websocket errors
@@ -115,7 +116,7 @@ export const SocketProvider = ({ children }) => {
 
     // Cleanup on unmount
     return () => {
-      console.log('[Socket] Cleaning up socket connection...');
+      debug.log('[Socket] Cleaning up socket connection...');
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -125,20 +126,20 @@ export const SocketProvider = ({ children }) => {
 
   // Function to register webhook handler (matching rexy.js pattern)
   const registerWebhookHandler = (handler) => {
-    console.log('[Socket] Registering webhook handler');
+    debug.log('[Socket] Registering webhook handler');
     webhookHandlerRef.current = handler;
   };
 
   // Function to unregister webhook handler
   const unregisterWebhookHandler = () => {
-    console.log('[Socket] Unregistering webhook handler');
+    debug.log('[Socket] Unregistering webhook handler');
     webhookHandlerRef.current = null;
   };
 
   // Function to ensure socket is connected (matching netomi-integration.js)
   const ensureConnected = async (timeoutMs = 3000) => {
     if (!socket) {
-      console.warn('[Socket] Socket not initialized');
+      debug.warn('[Socket] Socket not initialized');
       return false;
     }
 
@@ -176,13 +177,13 @@ export const SocketProvider = ({ children }) => {
           try {
             socket.connect();
           } catch (e) {
-            console.warn('[Socket] Failed to initiate connection:', e);
+            debug.warn('[Socket] Failed to initiate connection:', e);
           }
         }
       });
       return socket.connected;
     } catch (e) {
-      console.warn('[Socket] ensureConnected failed:', e?.message || e);
+      debug.warn('[Socket] ensureConnected failed:', e?.message || e);
       return false;
     }
   };
