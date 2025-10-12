@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import debug from '../utils/debug';
+import RexyWelcome from '../assets/3d/Rexy_Welcome.gif';
+import RexyWatchReel from '../assets/3d/Rexy_watchReel.gif';
+import RexyCheck from '../assets/3d/Rexy_Check.gif';
+import RexyReceivePhoto from '../assets/3d/Rexy_Receivephoto.gif';
+import RexySearching from '../assets/3d/Rexy_searching.gif';
+import RexyThinking from '../assets/3d/Rexy_Thinking.gif';
 
 /**
  * Asset Preloader Hook for 3D Animations
@@ -30,51 +36,46 @@ export const useAssetPreloader = () => {
     });
   }, []);
 
-  // Preload animation GIFs
-  const preloadAnimations = useCallback(async (animationNames) => {
-    const promises = animationNames.map(async (name) => {
-      try {
-        const img = await loadImage(`/image/3d/${name}`);
-        cacheRef.current.set(name.replace('.gif', ''), img);
-        setLoadedCount(prev => prev + 1);
-        debug.log(`📦 Loaded: ${name}`);
-      } catch (error) {
-        debug.warn(`Failed to preload animation: ${name}`, error);
-      }
-    });
-
-    return Promise.allSettled(promises);
-  }, [loadImage]);
-
   // Initialize preloading
   useEffect(() => {
     const init = async () => {
-      // Define welcome animation first (highest priority)
-      const welcomeAnimation = ['Rexy_Welcome.gif'];
+      // Animation imports (already imported at top)
+      const animations = {
+        'Rexy_Welcome': RexyWelcome,
+        'Rexy_Watchreel': RexyWatchReel,
+        'Rexy_Check': RexyCheck,
+        'Rexy_Receivephoto': RexyReceivePhoto,
+        'Rexy_Searching': RexySearching,
+        'Rexy_Thinking': RexyThinking
+      };
       
-      // Define other 3D animations to preload after welcome
-      const otherAnimations = [
-        'Rexy_Watchreel.gif',
-        'Rexy_Check.gif',
-        'Rexy_Receivephoto.gif',
-        'Rexy_Searching.gif',
-        'Rexy_Thinking.gif',
-      ];
-
-      // Set total count
-      const total = welcomeAnimation.length + otherAnimations.length;
-      setTotalCount(total);
+      setTotalCount(Object.keys(animations).length);
       
       try {
-        // First, load welcome animation with highest priority
         debug.log('🎬 Preloading welcome animation first...');
-        await preloadAnimations(welcomeAnimation);
+        // Preload welcome first
+        const welcomeImg = await loadImage(RexyWelcome);
+        cacheRef.current.set('Rexy_Welcome', welcomeImg);
+        setLoadedCount(1);
         debug.log('✅ Welcome animation preloaded!');
         setIsWelcomeReady(true);
         
-        // Then load other animations
         debug.log('📦 Preloading other animations...');
-        await preloadAnimations(otherAnimations);
+        // Preload the rest
+        let loaded = 1;
+        for (const [name, src] of Object.entries(animations)) {
+          if (name === 'Rexy_Welcome') continue; // Already loaded
+          try {
+            const img = await loadImage(src);
+            cacheRef.current.set(name, img);
+            loaded++;
+            setLoadedCount(loaded);
+            debug.log(`📦 Loaded: ${name}`);
+          } catch (error) {
+            debug.warn(`Failed to preload animation: ${name}`, error);
+          }
+        }
+        
         debug.log('✅ All 3D animations preloaded successfully!');
         setIsAllReady(true);
       } catch (error) {
@@ -83,7 +84,7 @@ export const useAssetPreloader = () => {
     };
 
     init();
-  }, [preloadAnimations]);
+  }, [loadImage]);
 
   // Get cached animation
   const getAnimation = useCallback((name) => {

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PhotoOptionsPopup from './PhotoOptionsPopup';
 import ImagePreview from './ImagePreview';
+import AddIcon from '../assets/ui-icon/add.svg';
+import SendIcon from '../assets/ui-icon/send.svg';
 
 const ChatInput = ({ onSendMessage }) => {
   const [message, setMessage] = useState('');
@@ -93,7 +95,7 @@ const ChatInput = ({ onSendMessage }) => {
             onClick={handleAddButtonClick}
             type="button"
           >
-            <img src="/image/ui-icon/add.svg" alt="Add" className="icon" />
+            <img src={AddIcon} alt="Add" className="icon" />
           </button>
           
           <button 
@@ -101,7 +103,7 @@ const ChatInput = ({ onSendMessage }) => {
             onClick={handleSend}
             type="button"
           >
-            <img src="/image/ui-icon/send.svg" alt="Send" className="icon" />
+            <img src={SendIcon} alt="Send" className="icon" />
           </button>
         </div>
         

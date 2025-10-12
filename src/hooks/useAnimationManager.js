@@ -1,5 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 import debug from '../utils/debug';
+import RexyWelcome from '../assets/3d/Rexy_Welcome.gif';
+import RexyThinking from '../assets/3d/Rexy_Thinking.gif';
+import RexyReceivePhoto from '../assets/3d/Rexy_Receivephoto.gif';
+import RexySearching from '../assets/3d/Rexy_searching.gif';
+import RexyWatchReel from '../assets/3d/Rexy_watchReel.gif';
 
 const useAnimationManager = () => {
   const [isThinkingAnimationActive, setIsThinkingAnimationActive] = useState(false);
@@ -18,17 +23,17 @@ const useAnimationManager = () => {
     WATCH_REEL_DURATION_MS: 5000,
     WATCH_REEL_FADE_OUT_MS: 300,
     MINIMUM_CHATS_FOR_ANIMATION: 3,
-    THINKING_ANIMATIONS: [
-      'Rexy_Thinking',
-      'Rexy_Receivephoto', 
-      'Rexy_Searching'
-    ]
+    THINKING_ANIMATIONS: {
+      'Rexy_Thinking': RexyThinking,
+      'Rexy_Receivephoto': RexyReceivePhoto,
+      'Rexy_Searching': RexySearching
+    }
   };
 
   const renderWelcomeAnimation = useCallback(() => {
     return (
       <img 
-        src="/image/3d/Rexy_Welcome.gif" 
+        src={RexyWelcome} 
         alt="Rexy Welcome"
         className="welcome-gif"
       />
@@ -58,11 +63,10 @@ const useAnimationManager = () => {
         // Set delay before showing animation
         thinkingTimeoutRef.current = setTimeout(() => {
           // Pick ONE random animation for this waiting session (matching vanilla JS)
-          const randomAnimation = ANIMATION_CONFIG.THINKING_ANIMATIONS[
-            Math.floor(Math.random() * ANIMATION_CONFIG.THINKING_ANIMATIONS.length)
-          ];
-          debug.log(`[AnimationManager] Selected animation for this session: ${randomAnimation}`);
-          setSelectedThinkingAnimation(randomAnimation);
+          const animationNames = Object.keys(ANIMATION_CONFIG.THINKING_ANIMATIONS);
+          const randomName = animationNames[Math.floor(Math.random() * animationNames.length)];
+          debug.log(`[AnimationManager] Selected animation for this session: ${randomName}`);
+          setSelectedThinkingAnimation(randomName);
           setIsThinkingAnimationActive(true);
         }, ANIMATION_CONFIG.THINKING_ANIMATION_DELAY_MS);
       } else {
@@ -120,10 +124,11 @@ const useAnimationManager = () => {
     if (!isThinkingAnimationActive || !selectedThinkingAnimation) return null;
 
     // Use the ONE selected animation for this entire waiting session
+    const animationSrc = ANIMATION_CONFIG.THINKING_ANIMATIONS[selectedThinkingAnimation];
     return (
       <div className="rexy-3d-overlay show">
         <img 
-          src={`/image/3d/${selectedThinkingAnimation}.gif`}
+          src={animationSrc}
           alt="Rexy Thinking"
           className="rexy-3d-gif"
         />
@@ -137,7 +142,7 @@ const useAnimationManager = () => {
 
     return (
       <img 
-        src="/image/3d/Rexy_Watchreel.gif"
+        src={RexyWatchReel}
         alt="Rexy Watch Reel"
         className="rexy-watch-reel"
       />
