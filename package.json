@@ -10,10 +10,12 @@
     "eject": "react-scripts eject"
   },
   "dependencies": {
+    "@craco/craco": "^7.1.0",
     "cors": "^2.8.5",
     "dompurify": "^3.2.7",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
@@ -33,11 +35,9 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "@types/dompurify": "^3.0.5",
-    "http-proxy-middleware": "^3.0.5"
+    "@types/dompurify": "^3.0.5"
   }
 }
