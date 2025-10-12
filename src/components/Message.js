@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeHtml } from '../utils/sanitizer';
 
 const Message = ({ message, renderWelcomeAnimation, onImageClick, onVideoClick }) => {
   const { type, content, isWelcome, isTyping, isHtml, isSticker, imageSrc, isCarousel, carouselData } = message;
@@ -114,7 +115,9 @@ const Message = ({ message, renderWelcomeAnimation, onImageClick, onVideoClick }
         ) : (
           <div className="message-bubble bot-bubble">
             {isHtml ? (
-              <div dangerouslySetInnerHTML={{ __html: content }} />
+              <div dangerouslySetInnerHTML={{ 
+                __html: sanitizeHtml(content)
+              }} />
             ) : (
               content
             )}
