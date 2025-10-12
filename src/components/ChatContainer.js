@@ -9,6 +9,7 @@ import { useNetomiIntegration } from '../hooks/useNetomiIntegration';
 import { useAnimationManager } from '../hooks/useAnimationManager';
 import { useGTMManager } from '../hooks/useGTMManager';
 import { useSocket } from '../contexts/SocketContext';
+import debug from '../utils/debug';
 import '../styles/App.css';
 import '../styles/Message.css';
 import '../styles/ChatInput.css';
@@ -28,15 +29,12 @@ const ChatContainer = () => {
   const {
     isThinkingAnimationActive,
     isWatchReelActive,
-    isThinkingInChat,
     renderWelcomeAnimation,
-    showThinkingAnimationIfNeeded,
+    startThinkingAnimation,
+    stopThinkingAnimation,
     showWatchReelAnimation,
-    showThinkingInChat,
-    hideThinkingInChat,
     renderThinkingOverlay,
     renderWatchReelOverlay,
-    renderThinkingInChat,
     cleanup
   } = animationManager;
 
@@ -89,22 +87,22 @@ const ChatContainer = () => {
   // Register webhook handler for real-time updates (matching rexy.js)
   useEffect(() => {
     const handleWebhookUpdate = (webhookResponse) => {
-      console.log('[ChatContainer] Processing real-time webhook update:', webhookResponse);
+      debug.log('[ChatContainer] Processing real-time webhook update:', webhookResponse);
       
-      // Hide thinking animation if it's showing
-      hideThinkingInChat();
+      // Stop thinking animation when response arrives (matching vanilla JS)
+      stopThinkingAnimation();
       
       // Extract all AI response texts
       const allTexts = extractAllAIResponseTexts(webhookResponse);
       if (allTexts.length > 0) {
-        console.log(`[ChatContainer] Adding ${allTexts.length} AI responses from real-time update`);
+        debug.log(`[ChatContainer] Adding ${allTexts.length} AI responses from real-time update`);
         renderMultipleMessages(allTexts, 1200); // 1.2 second delay between messages
       }
       
       // Extract and display image if available
       const imageData = extractImageData(webhookResponse);
       if (imageData) {
-        console.log('[ChatContainer] Adding image from real-time update:', imageData.imageUrl);
+        debug.log('[ChatContainer] Adding image from real-time update:', imageData.imageUrl);
         addStickerStyleImage(imageData.imageUrl);
       }
       
@@ -122,7 +120,7 @@ const ChatContainer = () => {
     return () => {
       unregisterWebhookHandler();
     };
-  }, [hideThinkingInChat, extractAllAIResponseTexts, extractImageData, extractCarouselData, registerWebhookHandler, unregisterWebhookHandler]);
+  }, [stopThinkingAnimation, extractAllAIResponseTexts, extractImageData, extractCarouselData, registerWebhookHandler, unregisterWebhookHandler]);
 
 
   const addMessage = (text, isUser = true, options = {}) => {
@@ -157,29 +155,26 @@ const ChatContainer = () => {
     // Add user message
     addMessage(messageText, true);
 
-    // Show thinking animation in chat
-    showThinkingInChat();
+    // Start thinking animation (matching vanilla JS - shows fullscreen overlay after delay)
+    startThinkingAnimation();
 
     try {
       // Send to Netomi
       const response = await netomiIntegration.sendMessage(messageText, attachments);
       
-      // Hide thinking animation in chat
-      hideThinkingInChat();
+      // DON'T stop animation here - initial response is just acknowledgment
+      // Animation will stop when webhook arrives with actual data
 
-      // Add bot response
+      // Add bot response if there's immediate text (though usually there isn't)
       if (response && response.text) {
         addMessage(response.text, false, { isHtml: response.isHtml });
       }
 
-      // Show thinking animation if conditions are met
-      showThinkingAnimationIfNeeded(messages.length);
-
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Hide thinking animation in chat
-      hideThinkingInChat();
+      // Stop thinking animation on error
+      stopThinkingAnimation();
       
       // Show error message
       addMessage('Sorry, I encountered an error. Please try again.', false);
@@ -190,11 +185,11 @@ const ChatContainer = () => {
   const renderMultipleMessages = (textMessages, delay = 1000) => {
     if (!textMessages || textMessages.length === 0) return;
     
-    console.log(`[ChatContainer] Rendering ${textMessages.length} messages sequentially`);
+    debug.log(`[ChatContainer] Rendering ${textMessages.length} messages sequentially`);
     
     textMessages.forEach((messageData, index) => {
       setTimeout(() => {
-        console.log(`[ChatContainer] Rendering message ${index + 1}:`, messageData.text);
+        debug.log(`[ChatContainer] Rendering message ${index + 1}:`, messageData.text);
         addMessage(messageData.text, false, { isHtml: false });
       }, index * delay);
     });
@@ -243,10 +238,13 @@ const ChatContainer = () => {
     }
   };
 
-  // Handle video click to open video overlay
+  // Handle video click to open video overlay (matching vanilla JS)
   const handleVideoClick = (videoUrl, title) => {
-    console.log('[ChatContainer] Video clicked:', videoUrl, title);
+    debug.log('[ChatContainer] Video clicked:', videoUrl, title);
     setVideoOverlayData({ videoUrl, title });
+    
+    // Show watch reel animation when video opens (matching vanilla JS)
+    showWatchReelAnimation();
   };
 
   const handleCloseVideoOverlay = () => {
@@ -274,8 +272,6 @@ const ChatContainer = () => {
         ref={chatMessagesRef}
         messages={messages}
         renderWelcomeAnimation={renderWelcomeAnimation}
-        renderThinkingInChat={renderThinkingInChat}
-        isThinkingInChat={isThinkingInChat}
         onImageClick={handleImageClick}
         onVideoClick={handleVideoClick}
       />

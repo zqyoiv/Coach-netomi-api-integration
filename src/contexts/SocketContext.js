@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
+import debug from '../utils/debug';
 
 const SocketContext = createContext();
 

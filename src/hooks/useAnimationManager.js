@@ -1,11 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
+import debug from '../utils/debug';
 
 const useAnimationManager = () => {
   const [isThinkingAnimationActive, setIsThinkingAnimationActive] = useState(false);
   const [isWatchReelActive, setIsWatchReelActive] = useState(false);
-  const [isThinkingInChat, setIsThinkingInChat] = useState(false);
+  const [selectedThinkingAnimation, setSelectedThinkingAnimation] = useState(null);
+  const userChatCountRef = useRef(0);
   const thinkingTimeoutRef = useRef(null);
   const watchReelTimeoutRef = useRef(null);
+  const thinkingStartTimeRef = useRef(null);
 
   const ANIMATION_CONFIG = {
     THINKING_ANIMATION_PROBABILITY: 0.5,
@@ -32,73 +35,103 @@ const useAnimationManager = () => {
     );
   }, []);
 
-  const showThinkingAnimationIfNeeded = useCallback((messageCount) => {
-    // Only show animation if we have enough messages
-    if (messageCount < ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION) {
-      return;
+  // Start thinking animation (matching vanilla JS logic)
+  const startThinkingAnimation = useCallback(() => {
+    // Track start time for response timing
+    thinkingStartTimeRef.current = Date.now();
+    
+    // Increment user chat count
+    userChatCountRef.current += 1;
+    
+    // Only show 3D animation if user has sent minimum required messages
+    if (userChatCountRef.current >= ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION) {
+      // Show animation based on configured probability
+      const showAnimation = Math.random() < ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY;
+      debug.log(`[AnimationManager] 3D Animation decision: userChatCount=${userChatCountRef.current}, showAnimation=${showAnimation}`);
+      
+      if (showAnimation) {
+        // Clear any existing timeout
+        if (thinkingTimeoutRef.current) {
+          clearTimeout(thinkingTimeoutRef.current);
+        }
+        
+        // Set delay before showing animation
+        thinkingTimeoutRef.current = setTimeout(() => {
+          // Pick ONE random animation for this waiting session (matching vanilla JS)
+          const randomAnimation = ANIMATION_CONFIG.THINKING_ANIMATIONS[
+            Math.floor(Math.random() * ANIMATION_CONFIG.THINKING_ANIMATIONS.length)
+          ];
+          debug.log(`[AnimationManager] Selected animation for this session: ${randomAnimation}`);
+          setSelectedThinkingAnimation(randomAnimation);
+          setIsThinkingAnimationActive(true);
+        }, ANIMATION_CONFIG.THINKING_ANIMATION_DELAY_MS);
+      } else {
+        debug.log(`[AnimationManager] 3D Animation skipped due to ${Math.round(ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY * 100)}% probability`);
+      }
+    } else {
+      debug.log(`[AnimationManager] 3D Animation skipped - need ${ANIMATION_CONFIG.MINIMUM_CHATS_FOR_ANIMATION}+ chats (current: ${userChatCountRef.current})`);
     }
+  }, []);
 
-    // Random chance to show animation
-    if (Math.random() > ANIMATION_CONFIG.THINKING_ANIMATION_PROBABILITY) {
-      return;
-    }
-
-    // Clear any existing timeout
+  // Stop thinking animation when response is received (matching vanilla JS)
+  const stopThinkingAnimation = useCallback(() => {
+    // Clear the thinking animation timeout if response came back quickly
     if (thinkingTimeoutRef.current) {
       clearTimeout(thinkingTimeoutRef.current);
+      thinkingTimeoutRef.current = null;
     }
-
-    // Set delay before showing animation
-    thinkingTimeoutRef.current = setTimeout(() => {
-      setIsThinkingAnimationActive(true);
-      
-      // Auto-hide after a random duration
-      const duration = 2000 + Math.random() * 3000; // 2-5 seconds
-      setTimeout(() => {
-        setIsThinkingAnimationActive(false);
-      }, duration);
-    }, ANIMATION_CONFIG.THINKING_ANIMATION_DELAY_MS);
+    
+    // Calculate response time for debugging
+    if (thinkingStartTimeRef.current) {
+      const responseTime = Date.now() - thinkingStartTimeRef.current;
+      debug.log(`[AnimationManager] Response received in ${responseTime}ms`);
+      thinkingStartTimeRef.current = null;
+    }
+    
+    // Hide fullscreen thinking overlay
+    setIsThinkingAnimationActive(false);
+    // Clear the selected animation for next session
+    setSelectedThinkingAnimation(null);
   }, []);
 
   const showWatchReelAnimation = useCallback(() => {
-    if (Math.random() > ANIMATION_CONFIG.WATCH_REEL_PROBABILITY) {
+    const randomValue = Math.random();
+    const showWatchReel = randomValue < ANIMATION_CONFIG.WATCH_REEL_PROBABILITY;
+    
+    debug.log(`[AnimationManager] Watch reel probability check: ${randomValue} < ${ANIMATION_CONFIG.WATCH_REEL_PROBABILITY} = ${showWatchReel}`);
+    
+    if (!showWatchReel) {
+      debug.log(`[AnimationManager] Watch reel skipped due to ${Math.round(ANIMATION_CONFIG.WATCH_REEL_PROBABILITY * 100)}% probability`);
       return;
     }
 
+    debug.log(`[AnimationManager] Watch reel will show!`);
     setIsWatchReelActive(true);
     
     // Auto-hide after duration
     watchReelTimeoutRef.current = setTimeout(() => {
+      debug.log('[AnimationManager] Watch reel fading out after 5 seconds');
       setIsWatchReelActive(false);
     }, ANIMATION_CONFIG.WATCH_REEL_DURATION_MS);
   }, []);
 
-  const showThinkingInChat = useCallback(() => {
-    setIsThinkingInChat(true);
-  }, []);
-
-  const hideThinkingInChat = useCallback(() => {
-    setIsThinkingInChat(false);
-  }, []);
-
+  // Render fullscreen thinking overlay (matching vanilla JS)
   const renderThinkingOverlay = useCallback(() => {
-    if (!isThinkingAnimationActive) return null;
+    if (!isThinkingAnimationActive || !selectedThinkingAnimation) return null;
 
-    const randomAnimation = ANIMATION_CONFIG.THINKING_ANIMATIONS[
-      Math.floor(Math.random() * ANIMATION_CONFIG.THINKING_ANIMATIONS.length)
-    ];
-
+    // Use the ONE selected animation for this entire waiting session
     return (
       <div className="rexy-3d-overlay show">
         <img 
-          src={`/image/3d/${randomAnimation}.gif`}
+          src={`/image/3d/${selectedThinkingAnimation}.gif`}
           alt="Rexy Thinking"
           className="rexy-3d-gif"
         />
       </div>
     );
-  }, [isThinkingAnimationActive]);
+  }, [isThinkingAnimationActive, selectedThinkingAnimation]);
 
+  // Render watch reel overlay in bottom right (matching vanilla JS)
   const renderWatchReelOverlay = useCallback(() => {
     if (!isWatchReelActive) return null;
 
@@ -110,18 +143,6 @@ const useAnimationManager = () => {
       />
     );
   }, [isWatchReelActive]);
-
-  const renderThinkingInChat = useCallback(() => {
-    if (!isThinkingInChat) return null;
-
-    return (
-      <img 
-        src="/image/3d/Rexy_Thinking.gif"
-        alt="Rexy Thinking"
-        className="thinking-rexy"
-      />
-    );
-  }, [isThinkingInChat]);
 
   // Cleanup timeouts on unmount
   const cleanup = useCallback(() => {
@@ -136,15 +157,12 @@ const useAnimationManager = () => {
   return {
     isThinkingAnimationActive,
     isWatchReelActive,
-    isThinkingInChat,
     renderWelcomeAnimation,
-    showThinkingAnimationIfNeeded,
+    startThinkingAnimation,
+    stopThinkingAnimation,
     showWatchReelAnimation,
-    showThinkingInChat,
-    hideThinkingInChat,
     renderThinkingOverlay,
     renderWatchReelOverlay,
-    renderThinkingInChat,
     cleanup
   };
 };

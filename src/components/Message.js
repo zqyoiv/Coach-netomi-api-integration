@@ -1,23 +1,13 @@
 import React from 'react';
 
-const Message = ({ message, renderWelcomeAnimation, renderThinkingInChat, onImageClick, onVideoClick }) => {
-  const { type, content, isWelcome, isTyping, isHtml, isSticker, imageSrc, isCarousel, carouselData } = message;
+const Message = ({ message, renderWelcomeAnimation, onImageClick, onVideoClick }) => {
+  const { type, content, isWelcome, isHtml, isSticker, imageSrc, isCarousel, carouselData } = message;
 
   if (isWelcome) {
     return (
       <div className="message bot-message welcome-gif-message">
         <div className="message-content welcome-gif-content">
           {renderWelcomeAnimation()}
-        </div>
-      </div>
-    );
-  }
-
-  if (isTyping) {
-    return (
-      <div className="message bot-message">
-        <div className="message-content">
-          {renderThinkingInChat()}
         </div>
       </div>
     );

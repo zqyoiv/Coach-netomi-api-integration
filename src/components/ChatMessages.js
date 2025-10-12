@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect } from 'react';
 import Message from './Message';
 
-const ChatMessages = forwardRef(({ messages, renderWelcomeAnimation, renderThinkingInChat, isThinkingInChat, onImageClick, onVideoClick }, ref) => {
+const ChatMessages = forwardRef(({ messages, renderWelcomeAnimation, onImageClick, onVideoClick }, ref) => {
   useEffect(() => {
     // Scroll to bottom when messages change
     if (ref.current) {
@@ -16,18 +16,10 @@ const ChatMessages = forwardRef(({ messages, renderWelcomeAnimation, renderThink
             key={message.id} 
             message={message}
             renderWelcomeAnimation={renderWelcomeAnimation}
-            renderThinkingInChat={renderThinkingInChat}
             onImageClick={onImageClick}
             onVideoClick={onVideoClick}
           />
         ))}
-        {isThinkingInChat && (
-          <div className="message bot-message">
-            <div className="message-content">
-              {renderThinkingInChat()}
-            </div>
-          </div>
-        )}
     </div>
   );
 });

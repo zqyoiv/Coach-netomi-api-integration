@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import debug from '../utils/debug';
 
 /**
  * Asset Preloader Hook for 3D Animations
@@ -36,9 +37,9 @@ export const useAssetPreloader = () => {
         const img = await loadImage(`/image/3d/${name}`);
         cacheRef.current.set(name.replace('.gif', ''), img);
         setLoadedCount(prev => prev + 1);
-        console.log(`📦 Loaded: ${name}`);
+        debug.log(`📦 Loaded: ${name}`);
       } catch (error) {
-        console.warn(`Failed to preload animation: ${name}`, error);
+        debug.warn(`Failed to preload animation: ${name}`, error);
       }
     });
 
@@ -66,18 +67,18 @@ export const useAssetPreloader = () => {
       
       try {
         // First, load welcome animation with highest priority
-        console.log('🎬 Preloading welcome animation first...');
+        debug.log('🎬 Preloading welcome animation first...');
         await preloadAnimations(welcomeAnimation);
-        console.log('✅ Welcome animation preloaded!');
+        debug.log('✅ Welcome animation preloaded!');
         setIsWelcomeReady(true);
         
         // Then load other animations
-        console.log('📦 Preloading other animations...');
+        debug.log('📦 Preloading other animations...');
         await preloadAnimations(otherAnimations);
-        console.log('✅ All 3D animations preloaded successfully!');
+        debug.log('✅ All 3D animations preloaded successfully!');
         setIsAllReady(true);
       } catch (error) {
-        console.warn('⚠️ Some assets failed to preload:', error);
+        debug.warn('⚠️ Some assets failed to preload:', error);
       }
     };
 
