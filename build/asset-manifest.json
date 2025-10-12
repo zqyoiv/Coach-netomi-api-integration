@@ -1,0 +1,24 @@
+{
+  "files": {
+    "main.css": "/static/css/main.0acbf0cf.css",
+    "main.js": "/static/js/main.f59a635c.js",
+    "static/media/Rexy_Check.gif": "/static/media/Rexy_Check.c93c908595bb94e94051.gif",
+    "static/media/Rexy_Welcome.gif": "/static/media/Rexy_Welcome.7ddf266e59f52a86e8e2.gif",
+    "static/media/Rexy_searching.gif": "/static/media/Rexy_searching.5187808a7126a18570ca.gif",
+    "static/media/Rexy_watchReel.gif": "/static/media/Rexy_watchReel.d6eeae699401a4bf9483.gif",
+    "static/media/Rexy_Receivephoto.gif": "/static/media/Rexy_Receivephoto.1f6c7d41256f277db283.gif",
+    "static/media/Rexy_Thinking.gif": "/static/media/Rexy_Thinking.11d08f0e113d8b35ecd3.gif",
+    "static/media/rexy-icon.png": "/static/media/rexy-icon.e3631bcd18228c5c930a.png",
+    "static/media/teri-logo-s.svg": "/static/media/teri-logo-s.23af2abb79ad7acf81931bbb70f3b011.svg",
+    "static/media/coach-logo.svg": "/static/media/coach-logo.b96615ca45bf9ecda62316ced04ea10b.svg",
+    "index.html": "/index.html",
+    "static/media/add.svg": "/static/media/add.1e33abe596ebbb5ae32b38c43e44b917.svg",
+    "static/media/send.svg": "/static/media/send.17a4b9e6d34dfa7be144efef1468802f.svg",
+    "main.0acbf0cf.css.map": "/static/css/main.0acbf0cf.css.map",
+    "main.f59a635c.js.map": "/static/js/main.f59a635c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.0acbf0cf.css",
+    "static/js/main.f59a635c.js"
+  ]
+}

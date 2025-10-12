@@ -1,0 +1,788 @@
+/* Message Styles - Exact Match to Original */
+
+/* Message layout */
+.chat-messages {
+  flex: 1;
+  padding: 20px 13px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  word-wrap: break-word;
+  position: relative;
+  flex: 1;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+.bot-message {
+  justify-content: flex-start;
+}
+
+.user-message {
+  justify-content: flex-end;
+}
+
+.message-content {
+  max-width: 90%;
+  padding: 0;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+/* Message bubbles - Exact Match */
+.message-bubble {
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 16px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.user-bubble {
+  background-color: #ffffff;
+  color: #333333;
+  border-bottom-right-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.bot-bubble {
+  background-color: #000000;
+  color: #ffffff;
+  border-bottom-left-radius: 6px;
+}
+
+/* Sticker styles */
+.sticker {
+  width: 117px;
+  height: 108px;
+  object-fit: cover;
+}
+
+/* Welcome GIF styles - Exact Match */
+.welcome-gif-message {
+  justify-content: center !important; /* Center the entire message */
+}
+
+.welcome-gif-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: none !important; /* Remove width restriction */
+  padding: 0;
+  margin: 20px 0; /* Add some vertical spacing */
+}
+
+.welcome-gif {
+  width: 140vw; /* Larger than regular stickers */
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* Quick Reply Options */
+.quick-replies-container {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.quick-reply-option {
+  background-color: #ffffff;
+  color: #333333;
+  border: 1px solid #e0e0e0;
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: fit-content;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+.quick-reply-option:hover {
+  background-color: #f5f5f5;
+}
+
+.quick-reply-option.selected {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.quick-reply-option:disabled {
+  cursor: not-allowed;
+}
+
+/* Thinking Rexy animation inside chat */
+.thinking-rexy {
+  position: relative;
+  display: block;
+  width: 82px;
+  height: auto;
+  margin: 6px 0 0 8px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* Fullscreen 3D Overlay - Exact Match */
+.rexy-3d-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(233, 230, 223, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.rexy-3d-overlay.show {
+  opacity: 1;
+}
+
+.rexy-3d-gif {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Grid styles (formerly carousel) */
+.carousel-container {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 6px;
+}
+
+/* Full-width grid layout */
+.full-width-grid-message {
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 10px 0 !important;
+}
+
+.full-width-grid-content {
+  max-width: none !important;
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%) !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.full-width-grid-container {
+  width: 100%;
+  padding: 0 0 0 10px;
+  box-sizing: border-box;
+}
+
+.carousel-scroller {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  padding: 8px 2px;
+}
+
+.carousel-item {
+  background: #ffffff;
+  color: #111;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+}
+
+.carousel-image {
+  width: 100%;
+  flex: 1;
+  object-fit: cover;
+  background: #f2f2f2;
+  display: block;
+}
+
+.carousel-content {
+  padding: 12px 14px 14px;
+}
+
+.carousel-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: #111;
+  margin-bottom: 6px;
+}
+
+.carousel-subtitle {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.carousel-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.carousel-button {
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 480px) {
+  .carousel-scroller {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .carousel-scroller {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+}
+
+@media (min-width: 769px) {
+  .carousel-scroller {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+}
+
+/* Source card styling for inline citation links */
+.source-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  margin: 6px 0 0 0;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.07);
+  border-radius: 8px;
+}
+
+.source-card .source-number {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+  background: #fff;
+}
+
+.source-card .source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.25);
+}
+
+.source-card .source-link {
+  color: #c9eaff;
+  text-decoration: none;
+}
+
+.source-card .source-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.source-card .source-text {
+  font-size: 13px;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Video Carousel Styles */
+.carousel-video-container {
+  position: relative;
+  cursor: pointer;
+}
+
+/* Video-only carousel items (no content area) */
+.carousel-video-container.video-only {
+  height: 100%;
+}
+
+.carousel-item.video-only-item,
+.carousel-item.image-only-item {
+  overflow: hidden;
+}
+
+/* Ensure video thumbnail fills the entire carousel item when video-only */
+.video-only .carousel-video-thumbnail {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Ensure image fills the entire grid item when image-only */
+.image-only-item {
+  aspect-ratio: 3/4;
+}
+
+.image-only-item .carousel-image {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transition: opacity 0.2s ease;
+}
+
+/* Add hover effect to indicate image is clickable */
+.image-only-item .carousel-image:hover {
+  opacity: 0.9;
+}
+
+/* Optional: Add a subtle expand icon on hover for images */
+.image-only-item {
+  position: relative;
+}
+
+.image-only-item::after {
+  content: '⛶';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.image-only-item:hover::after {
+  opacity: 1;
+}
+
+.carousel-video-thumbnail {
+  transition: opacity 0.2s ease;
+}
+
+.carousel-video-container:hover .carousel-video-thumbnail {
+  opacity: 0.8;
+}
+
+.video-play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.carousel-video-container:hover .video-play-button {
+  background-color: rgba(0, 0, 0, 0.9);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Video Overlay Styles */
+.video-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile Safari */
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  backdrop-filter: blur(5px);
+  /* Safari-specific fixes */
+  -webkit-box-align: center;
+  -webkit-box-pack: center;
+}
+
+.video-overlay.show {
+  opacity: 1;
+}
+
+.video-player-container {
+  position: relative;
+  max-width: 80vw;
+  max-height: 80vh;
+  max-height: 80dvh; /* Dynamic viewport height for mobile Safari */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Safari-specific centering */
+  -webkit-box-align: center;
+  -webkit-box-pack: center;
+}
+
+.video-player {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+}
+
+.video-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  z-index: 2001;
+}
+
+.video-close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.video-error {
+  color: white;
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+  background-color: rgba(255, 0, 0, 0.8);
+  border-radius: 8px;
+}
+
+/* Rexy Watch Reel Animation in Video Overlay */
+.rexy-watch-reel {
+  position: absolute;
+  bottom: 0;
+  right: -100px;
+  width: 400px;
+  height: auto;
+  object-fit: contain;
+  z-index: 2002;
+  pointer-events: none;
+  opacity: 1;
+  border-radius: 8px;
+  transition: opacity 0.3s ease;
+}
+
+/* Animated Typing Dots */
+.typing-dots {
+  display: inline-block;
+  position: relative;
+}
+
+.typing-dots span {
+  display: inline-block;
+  opacity: 0;
+  animation: typing-dot-fade 1.4s infinite;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 200ms;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+@keyframes typing-dot-fade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  40% { opacity: 1; }
+  60% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Photo Stack Styles - Exact Match from photo.css */
+.photo-stack {
+  position: relative;
+  width: 240px;
+  height: 300px;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.stack-photo {
+  position: absolute;
+  width: 180px;
+  height: 240px; /* 3:4 aspect ratio */
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.stack-photo:nth-child(1) {
+  /* Top photo (photo1) - centered position */
+  top: 20px;
+  left: 50px;
+  z-index: 3;
+}
+
+.stack-photo:nth-child(2) {
+  /* Second photo (photo2) - rotated left, positioned behind and to the left */
+  top: 5px;
+  left: 20px;
+  z-index: 2;
+}
+
+.stack-photo:nth-child(3) {
+  /* Third photo (photo3) - rotated right, positioned behind and to the right */
+  top: 0px;
+  left: 15px;
+  z-index: 1;
+}
+
+/* Photo Overlay Styles - Exact Match from photo.css */
+.photo-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw; /* Fixed: was 101vw which could cause horizontal offset */
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile Safari */
+  background-color: rgba(22, 22, 22, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  backdrop-filter: blur(5px);
+  /* Safari-specific fixes */
+  -webkit-box-align: center;
+  -webkit-box-pack: center;
+}
+
+.photo-overlay.show {
+  opacity: 1;
+}
+
+/* Expanded photo stack view - Grid Layout */
+.expanded-photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2 columns */
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
+  max-height: 90dvh; /* Dynamic viewport height for mobile Safari */
+  padding: 20px;
+}
+
+.expanded-photo {
+  width: 150px;
+  height: 200px; /* 3:4 aspect ratio */
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  transform: rotate(0deg) !important; /* Reset rotation in expanded view */
+  justify-self: center; /* Center each photo in its grid cell */
+}
+
+.expanded-photo:hover {
+  transform: scale(1.05) !important;
+}
+
+/* Fullscreen photo view */
+.fullscreen-photo {
+  max-width: 90vw;
+  max-height: 90vh;
+  max-height: 90dvh; /* Dynamic viewport height for mobile Safari */
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+/* Close button */
+.photo-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.photo-close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Navigation arrows for fullscreen */
+.photo-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.photo-nav:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.photo-nav.prev {
+  left: 20px;
+}
+
+.photo-nav.next {
+  right: 20px;
+}
+
+/* Mobile Safari Overlay Fixes */
+@media screen and (max-width: 768px) {
+  .video-overlay {
+    /* Ensure full coverage on mobile Safari */
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Additional Safari-specific properties */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+  }
+  
+  .video-player-container {
+    /* More aggressive centering for mobile Safari */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    -webkit-transform: translate(-50%, -50%);
+    width: 80vw;
+    height: auto;
+    max-height: 80vh;
+    max-height: 80dvh;
+  }
+  
+  .video-player {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .photo-overlay {
+    /* Ensure full coverage on mobile Safari */
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Additional Safari-specific properties */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+  }
+  
+  .fullscreen-photo {
+    /* More aggressive centering for mobile Safari */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    -webkit-transform: translate(-50%, -50%);
+    max-width: 90vw;
+    max-height: 90vh;
+    max-height: 90dvh;
+    width: auto;
+    height: auto;
+  }
+  
+  .expanded-photos {
+    /* Ensure proper centering for photo grid */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    -webkit-transform: translate(-50%, -50%);
+    width: 90vw;
+    max-height: 90vh;
+    max-height: 90dvh;
+  }
+}

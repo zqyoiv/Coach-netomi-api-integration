@@ -1,13 +1,36 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import crypto from 'crypto';
-import { createServer } from 'http';
+import { createServer as createHttpServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import { Server } from 'socket.io';
 import fs from 'fs/promises';
 import path from 'path';
+import { sanitizeForLog, isValidConversationId, isValidSocketId } from './utils/log-sanitizer.js';
+import debug from './utils/server-debug.js';
 
 const app = express();
-const httpServer = createServer(app);
+
+// Use HTTPS in production if SSL certificates are available, otherwise use HTTP for development
+let httpServer;
+try {
+  // Try to load SSL certificates (create these files for production)
+  // For local development without HTTPS, this will fail and fall back to HTTP
+  const sslKey = await fs.readFile('./ssl/key.pem', 'utf8').catch(() => null);
+  const sslCert = await fs.readFile('./ssl/cert.pem', 'utf8').catch(() => null);
+  
+  if (sslKey && sslCert) {
+    httpServer = createHttpsServer({ key: sslKey, cert: sslCert }, app);
+    debug.info('✅ HTTPS server enabled (SSL certificates loaded)');
+  } else {
+    httpServer = createHttpServer(app);
+    debug.info('⚠️  HTTP server enabled (no SSL certificates found - OK for local development)');
+  }
+} catch (err) {
+  httpServer = createHttpServer(app);
+  debug.info('⚠️  HTTP server enabled (no SSL certificates found - OK for local development)');
+}
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
@@ -16,9 +39,19 @@ const io = new Server(httpServer, {
   // Increase heartbeat tolerances to reduce ping timeouts on slow networks or throttled tabs
   pingInterval: 25000, // server ping every 25s
   pingTimeout: 60000,  // allow up to 60s without pong before closing
+  // Render.com requires these settings for WebSocket support behind load balancer
+  transports: ['websocket', 'polling'], // Try WebSocket first, fall back to polling
+  allowEIO3: true, // Support older Engine.IO clients if needed
+  path: '/socket.io/', // Explicit path for clarity
 });
 
+// Disable X-Powered-By header for security (CWE-200: Information Exposure)
+app.disable('x-powered-by');
+
 app.use(express.json({ limit: '1mb' }));
+// Serve React build folder
+app.use(express.static('build'));
+// Serve public folder for legacy HTML and assets
 app.use(express.static('public'));
 
 // ------------------------------
@@ -184,12 +217,12 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
     
     // Check if this is an authentication failure
     if (isAuthenticationFailure(res.status, txt)) {
-      console.log(`[Process Message] Authentication failure detected (${res.status}): ${txt}`);
+      debug.log(`[Process Message] Authentication failure detected (${res.status}): ${txt}`);
       
       try {
         // Regenerate token and retry once
         const newToken = await handleAuthenticationFailure();
-        console.log('[Process Message] Retrying request with new token...');
+        debug.log('[Process Message] Retrying request with new token...');
         
         // Retry the request with new token (reuse same requestId for webhook tracking)
         const retryRes = await fetch(url, {
@@ -210,7 +243,7 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
           throw new Error(`Process Message API error (retry): ${retryRes.status} ${retryTxt}`);
         }
         
-        console.log('[Process Message] Retry successful with new token');
+        debug.log('[Process Message] Retry successful with new token');
         
         // Continue with successful response
         const acknowledgment = await retryRes.json();
@@ -223,12 +256,12 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
           const webhookResponse = await webhookPromise;
           return { acknowledgment, webhookResponse, requestId };
         } catch (error) {
-          console.error(`[Process Message] Webhook timeout for request ${requestId}:`, error);
+          debug.error(`[Process Message] Webhook timeout for request ${requestId}:`, error);
           return { acknowledgment, webhookResponse: null, error: error.message, requestId };
         }
         
       } catch (retryError) {
-        console.error('[Process Message] Token regeneration or retry failed:', retryError);
+        debug.error('[Process Message] Token regeneration or retry failed:', retryError);
         throw new Error(`Authentication failure and retry failed: ${txt}`);
       }
     }
@@ -252,7 +285,7 @@ async function processMessage(messageData, authToken, waitForWebhook = true, tim
       requestId
     };
   } catch (error) {
-    console.error(`[Process Message] Webhook timeout for request ${requestId}:`, error);
+    debug.error(`[Process Message] Webhook timeout for request ${requestId}:`, error);
     return {
       acknowledgment,
       webhookResponse: null,
@@ -288,19 +321,19 @@ const TOKEN_EXPIRY_HOURS = 23; // Refresh token after 23 hours
  */
 async function readTokenFromFile() {
   try {
-    console.log('[Token Storage] Reading token from file:', TOKEN_STORAGE_FILE);
+    debug.log('[Token Storage] Reading token from file:', TOKEN_STORAGE_FILE);
     const data = await fs.readFile(TOKEN_STORAGE_FILE, 'utf8');
     const tokenData = JSON.parse(data);
     
-    console.log('[Token Storage] Token data loaded from file');
-    console.log('[Token Storage] Generated at:', new Date(tokenData.generatedAt).toISOString());
+    debug.log('[Token Storage] Token data loaded from file');
+    debug.log('[Token Storage] Generated at:', new Date(tokenData.generatedAt).toISOString());
     
     return tokenData;
   } catch (error) {
     if (error.code === 'ENOENT') {
-      console.log('[Token Storage] No existing token file found');
+      debug.log('[Token Storage] No existing token file found');
     } else {
-      console.error('[Token Storage] Error reading token file:', error.message);
+      debug.error('[Token Storage] Error reading token file:', error.message);
     }
     return null;
   }
@@ -326,15 +359,15 @@ async function writeTokenToFile(token, apiExpiresIn) {
     };
     
     await fs.writeFile(TOKEN_STORAGE_FILE, JSON.stringify(tokenData, null, 2), 'utf8');
-    console.log('[Token Storage] Token saved to file:', TOKEN_STORAGE_FILE);
-    console.log('[Token Storage] Current timestamp:', now);
-    console.log('[Token Storage] Generated at:', new Date(now).toISOString());
-    console.log('[Token Storage] Our expiration (23h):', new Date(ourExpirationTime).toISOString());
+    debug.log('[Token Storage] Token saved to file:', TOKEN_STORAGE_FILE);
+    debug.log('[Token Storage] Current timestamp:', now);
+    debug.log('[Token Storage] Generated at:', new Date(now).toISOString());
+    debug.log('[Token Storage] Our expiration (23h):', new Date(ourExpirationTime).toISOString());
     if (apiExpiresIn) {
-      console.log('[Token Storage] API expiration:', apiExpiresIn, 'seconds');
+      debug.log('[Token Storage] API expiration:', apiExpiresIn, 'seconds');
     }
   } catch (error) {
-    console.error('[Token Storage] Error writing token file:', error.message);
+    debug.error('[Token Storage] Error writing token file:', error.message);
     throw error;
   }
 }
@@ -356,8 +389,8 @@ function isStoredTokenValid(tokenData) {
   const isValid = tokenAge < maxAge;
   const ageInHours = Math.round(tokenAge / (60 * 60 * 1000) * 10) / 10;
   
-  console.log(`[Token Storage] Token age: ${ageInHours} hours (max: ${TOKEN_EXPIRY_HOURS} hours)`);
-  console.log(`[Token Storage] Token is ${isValid ? 'valid' : 'expired'}`);
+  debug.log(`[Token Storage] Token age: ${ageInHours} hours (max: ${TOKEN_EXPIRY_HOURS} hours)`);
+  debug.log(`[Token Storage] Token is ${isValid ? 'valid' : 'expired'}`);
   
   return isValid;
 }
@@ -367,7 +400,7 @@ function isStoredTokenValid(tokenData) {
  */
 async function generateServerToken() {
   try {
-    console.log('[Server Token] Generating new server-side token...');
+    debug.log('[Server Token] Generating new server-side token...');
     const tokenData = await generateToken();
     
     // Extract token and expiry from response
@@ -386,13 +419,13 @@ async function generateServerToken() {
     // Save to persistent storage
     await writeTokenToFile(token, expiresIn);
     
-    console.log('[Server Token] Token generated and saved successfully');
-    console.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
-    console.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
+    debug.log('[Server Token] Token generated and saved successfully');
+    debug.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
+    debug.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
     
     return { token, expiresIn, expiresAt: serverTokenExpiry };
   } catch (error) {
-    console.error('[Server Token] Failed to generate token:', error);
+    debug.error('[Server Token] Failed to generate token:', error);
     throw error;
   }
 }
@@ -411,11 +444,11 @@ function isServerTokenValid() {
  */
 function getCurrentServerToken() {
   if (isServerTokenValid()) {
-    console.log('[Server Token] Returning valid existing token');
+    debug.log('[Server Token] Returning valid existing token');
     return serverAuthToken;
   }
   
-  console.log('[Server Token] Current token is expired or missing');
+  debug.log('[Server Token] Current token is expired or missing');
   return null; // Don't generate, let auto-refresh handle it
 }
 
@@ -425,16 +458,16 @@ function getCurrentServerToken() {
  */
 async function loadServerTokenFromFile() {
   try {
-    console.log('[Server Token] Loading token from persistent storage...');
+    debug.log('[Server Token] Loading token from persistent storage...');
     const storedTokenData = await readTokenFromFile();
     
     if (!storedTokenData) {
-      console.log('[Server Token] No stored token found');
+      debug.log('[Server Token] No stored token found');
       return false;
     }
     
     if (!isStoredTokenValid(storedTokenData)) {
-      console.log('[Server Token] Stored token is expired, will generate new one');
+      debug.log('[Server Token] Stored token is expired, will generate new one');
       return false;
     }
     
@@ -442,16 +475,16 @@ async function loadServerTokenFromFile() {
     serverAuthToken = storedTokenData.token;
     serverTokenExpiry = storedTokenData.expiresAt;
     
-    console.log('[Server Token] Valid token loaded from storage');
-    console.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
-    console.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
+    debug.log('[Server Token] Valid token loaded from storage');
+    debug.log('[Server Token] Token:', serverAuthToken ? `${serverAuthToken.substring(0, 20)}...` : 'None');
+    debug.log('[Server Token] Expires at:', serverTokenExpiry ? new Date(serverTokenExpiry).toISOString() : 'No expiration');
     
     // Set up timer based on loaded token's expiration time
     setupTokenRefresh(serverTokenExpiry);
     
     return true;
   } catch (error) {
-    console.error('[Server Token] Error loading token from storage:', error);
+    debug.error('[Server Token] Error loading token from storage:', error);
     return false;
   }
 }
@@ -462,11 +495,11 @@ async function loadServerTokenFromFile() {
  */
 async function getValidServerTokenInternal() {
   if (isServerTokenValid()) {
-    console.log('[Server Token] Using existing valid token');
+    debug.log('[Server Token] Using existing valid token');
     return serverAuthToken;
   }
   
-  console.log('[Server Token] Token expired or missing, generating new one...');
+  debug.log('[Server Token] Token expired or missing, generating new one...');
   await generateServerToken();
   return serverAuthToken;
 }
@@ -479,7 +512,7 @@ function setupTokenRefresh(customExpiresAt = null) {
   // Clear existing timer if any
   if (tokenRefreshTimer) {
     clearInterval(tokenRefreshTimer);
-    console.log('[Server Token] Cleared existing refresh timer');
+    debug.log('[Server Token] Cleared existing refresh timer');
   }
   
   // Calculate refresh interval based on token expiration
@@ -489,19 +522,19 @@ function setupTokenRefresh(customExpiresAt = null) {
   if (!expiresAt) {
     // Fallback to 23 hours if no expiration time available
     const refreshInterval = 23 * 60 * 60 * 1000;
-    console.log('[Server Token] No expiration time available, using default 23-hour interval');
+    debug.log('[Server Token] No expiration time available, using default 23-hour interval');
     
     tokenRefreshTimer = setInterval(async () => {
       try {
-        console.log('[Server Token] Auto-refreshing token (default 23-hour cycle)...');
+        debug.log('[Server Token] Auto-refreshing token (default 23-hour cycle)...');
         await generateServerToken();
-        console.log('[Server Token] Token auto-refresh completed');
+        debug.log('[Server Token] Token auto-refresh completed');
       } catch (error) {
-        console.error('[Server Token] Auto-refresh failed:', error);
+        debug.error('[Server Token] Auto-refresh failed:', error);
       }
     }, refreshInterval);
     
-    console.log('[Server Token] Auto-refresh timer set for default 23 hours');
+    debug.log('[Server Token] Auto-refresh timer set for default 23 hours');
     return;
   }
   
@@ -510,11 +543,11 @@ function setupTokenRefresh(customExpiresAt = null) {
   
   if (timeUntilExpiry <= 0) {
     // Token already expired, refresh immediately
-    console.log('[Server Token] Token already expired, refreshing immediately...');
+    debug.log('[Server Token] Token already expired, refreshing immediately...');
     generateServerToken().then(() => {
       setupTokenRefresh(); // Restart timer with new token
     }).catch(error => {
-      console.error('[Server Token] Immediate refresh failed:', error);
+      debug.error('[Server Token] Immediate refresh failed:', error);
       // Fallback to 23-hour timer
       setupTokenRefresh(null);
     });
@@ -525,17 +558,17 @@ function setupTokenRefresh(customExpiresAt = null) {
   const refreshDelay = Math.max(timeUntilExpiry - (60 * 1000), 60 * 1000); // Minimum 1 minute
   const hoursUntilRefresh = refreshDelay / (60 * 60 * 1000);
   
-  console.log(`[Server Token] Token expires at: ${new Date(expiresAt).toISOString()}`);
-  console.log(`[Server Token] Setting refresh timer for ${hoursUntilRefresh.toFixed(2)} hours`);
+  debug.log(`[Server Token] Token expires at: ${new Date(expiresAt).toISOString()}`);
+  debug.log(`[Server Token] Setting refresh timer for ${hoursUntilRefresh.toFixed(2)} hours`);
   
   tokenRefreshTimer = setTimeout(async () => {
     try {
-      console.log('[Server Token] Auto-refreshing token (smart timing based on expiration)...');
+      debug.log('[Server Token] Auto-refreshing token (smart timing based on expiration)...');
       await generateServerToken();
-      console.log('[Server Token] Token auto-refresh completed, restarting timer...');
+      debug.log('[Server Token] Token auto-refresh completed, restarting timer...');
       setupTokenRefresh(); // Restart timer with new token expiration
     } catch (error) {
-      console.error('[Server Token] Auto-refresh failed:', error);
+      debug.error('[Server Token] Auto-refresh failed:', error);
       // Retry in 5 minutes
       setTimeout(() => setupTokenRefresh(), 5 * 60 * 1000);
     }
@@ -548,7 +581,7 @@ function setupTokenRefresh(customExpiresAt = null) {
  */
 async function handleAuthenticationFailure() {
   try {
-    console.log('[Auth Failure] Authentication failed, regenerating token...');
+    debug.log('[Auth Failure] Authentication failed, regenerating token...');
     
     // Generate new token
     await generateServerToken();
@@ -556,10 +589,10 @@ async function handleAuthenticationFailure() {
     // Restart the timer with new token expiration
     setupTokenRefresh();
     
-    console.log('[Auth Failure] Token regenerated and timer restarted successfully');
+    debug.log('[Auth Failure] Token regenerated and timer restarted successfully');
     return serverAuthToken;
   } catch (error) {
-    console.error('[Auth Failure] Failed to regenerate token:', error);
+    debug.error('[Auth Failure] Failed to regenerate token:', error);
     throw error;
   }
 }
@@ -589,23 +622,23 @@ function isAuthenticationFailure(statusCode, responseText) {
  */
 async function initializeTokenSystem() {
   try {
-    console.log('[Server Token] Initializing token system...');
+    debug.log('[Server Token] Initializing token system...');
     
     // Try to load existing token from file
     const tokenLoaded = await loadServerTokenFromFile();
     
     if (!tokenLoaded) {
       // No valid token found, generate a new one
-      console.log('[Server Token] No valid stored token, generating new one...');
+      debug.log('[Server Token] No valid stored token, generating new one...');
       await generateServerToken();
       // Set up automatic refresh after generating new token
       setupTokenRefresh();
     }
     // Note: If token was loaded, setupTokenRefresh was already called in loadServerTokenFromFile
     
-    console.log('[Server Token] Token system initialized successfully');
+    debug.log('[Server Token] Token system initialized successfully');
   } catch (error) {
-    console.error('[Server Token] Failed to initialize token system:', error);
+    debug.error('[Server Token] Failed to initialize token system:', error);
     // Don't throw - server can still start, token generation will be attempted later
   }
 }
@@ -617,13 +650,13 @@ async function initializeTokenSystem() {
 // Webhook endpoint to receive Netomi responses
 app.post('/webhook/netomi', express.json(), (req, res) => {
   try {
-    console.log('[Netomi Webhook] Received webhook call');
-    console.log('[Netomi Webhook] Headers:', req.headers);
+    debug.log('[Netomi Webhook] Received webhook call');
+    debug.log('[Netomi Webhook] Headers:', req.headers);
     
     // Bearer Token Authentication (Required by Netomi)
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-      console.error('[Netomi Webhook] Missing Authorization header');
+      debug.error('[Netomi Webhook] Missing Authorization header');
       return res.status(401).json({ 
         error: 'Missing Authorization header',
         message: 'Bearer token is required' 
@@ -631,7 +664,7 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     }
     
     if (!authHeader.startsWith('Bearer ')) {
-      console.error('[Netomi Webhook] Invalid Authorization header format');
+      debug.error('[Netomi Webhook] Invalid Authorization header format');
       return res.status(401).json({ 
         error: 'Invalid Authorization header format',
         message: 'Expected "Bearer <token>"' 
@@ -640,26 +673,26 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     
     const token = authHeader.substring(7); // Remove "Bearer " prefix
     if (token !== CONFIG.WEBHOOK_BEARER_TOKEN) {
-      console.error('[Netomi Webhook] Invalid bearer token');
+      debug.error('[Netomi Webhook] Invalid bearer token');
       return res.status(401).json({ 
         error: 'Invalid bearer token',
         message: 'Unauthorized access' 
       });
     }
     
-    console.log('[Netomi Webhook] Bearer token authentication successful');
+    debug.log('[Netomi Webhook] Bearer token authentication successful');
     
     // Get the parsed JSON payload (express.json() already parsed it)
     const payload = req.body;
     
     // Validate that we received a valid payload
     if (!payload || typeof payload !== 'object') {
-      console.error('[Netomi Webhook] Invalid or missing JSON payload');
+      debug.error('[Netomi Webhook] Invalid or missing JSON payload');
       return res.status(400).json({ error: 'Invalid JSON payload' });
     }
     
-    console.log('[Netomi Webhook] Payload response received.');
-    console.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
+    debug.log('[Netomi Webhook] Payload response received.');
+    debug.log('[Netomi Webhook] Payload:', JSON.stringify(payload, null, 2));
     
     // Optional: Additional signature verification (if Netomi provides it)
     if (CONFIG.WEBHOOK_SECRET) {
@@ -672,10 +705,10 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
           .digest('hex');
         
         if (`sha256=${expectedSignature}` !== signature) {
-          console.error('[Netomi Webhook] Invalid signature');
+          debug.error('[Netomi Webhook] Invalid signature');
           return res.status(401).json({ error: 'Invalid signature' });
         }
-        console.log('[Netomi Webhook] Signature verification successful');
+        debug.log('[Netomi Webhook] Signature verification successful');
       }
     }
     
@@ -687,7 +720,7 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
       const { resolve } = pendingRequests.get(requestId);
       resolve(payload);
       pendingRequests.delete(requestId);
-      console.log(`[Netomi Webhook] Resolved pending request: ${requestId}`);
+      debug.log(`[Netomi Webhook] Resolved pending request: ${requestId}`);
     }
     
     // Store the conversation message for later retrieval
@@ -729,7 +762,7 @@ app.post('/webhook/netomi', express.json(), (req, res) => {
     });
     
   } catch (error) {
-    console.error('[Netomi Webhook] Error processing webhook:', error);
+    debug.error('[Netomi Webhook] Error processing webhook:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -769,7 +802,7 @@ app.get('/api/netomi/test-connection', async (_req, res) => {
     const token = getCurrentServerToken();
     
     if (!token) {
-      console.log('[Server Connection] No valid token available');
+      debug.log('[Server Connection] No valid token available');
       return res.status(503).json({ 
         success: false, 
         error: 'Server token not available',
@@ -777,14 +810,14 @@ app.get('/api/netomi/test-connection', async (_req, res) => {
       });
     }
     
-    console.log('[Server Connection] Server has valid token, connection OK');
+    debug.log('[Server Connection] Server has valid token, connection OK');
     return res.json({ 
       success: true, 
       message: 'Server connection OK',
       timestamp: Date.now()
     });
   } catch (error) {
-    console.error('[Server Connection] Connection test error:', error);
+    debug.error('[Server Connection] Connection test error:', error);
     return res.status(500).json({ 
       success: false, 
       error: 'Connection test failed',
@@ -795,13 +828,13 @@ app.get('/api/netomi/test-connection', async (_req, res) => {
 
 // Legacy endpoint - deprecated (tokens should not be exposed to client)
 app.get('/api/netomi/generate-token', async (_req, res) => {
-  console.warn('[DEPRECATED] /api/netomi/generate-token endpoint accessed - tokens should not be exposed to client');
+  debug.warn('[DEPRECATED] /api/netomi/generate-token endpoint accessed - tokens should not be exposed to client');
   
   try {
     const token = getCurrentServerToken();
     
     if (!token) {
-      console.log('[Server Token] No valid token available for client, token refresh in progress');
+      debug.log('[Server Token] No valid token available for client, token refresh in progress');
       return res.status(503).json({ 
         ok: false, 
         error: 'Server token not available',
@@ -810,7 +843,7 @@ app.get('/api/netomi/generate-token', async (_req, res) => {
     }
     
     // Return connection status instead of actual token
-    console.log('[Server Token] Connection OK (legacy endpoint)');
+    debug.log('[Server Token] Connection OK (legacy endpoint)');
     return res.json({ 
       ok: true, 
       data: { 
@@ -819,7 +852,7 @@ app.get('/api/netomi/generate-token', async (_req, res) => {
       }
     });
   } catch (err) {
-    console.error('Server token fetch failed:', err);
+    debug.error('Server token fetch failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
@@ -834,57 +867,68 @@ app.post('/api/netomi/refresh-token', async (req, res) => {
     }
 
     const data = await refreshToken(refreshTokenValue);
-    console.log('[Netomi refresh token]', data);
+    debug.log('[Netomi refresh token]', data);
     return res.status(200).json({ ok: true, data });
   } catch (err) {
-    console.error('Refresh token failed:', err);
+    debug.error('Refresh token failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
 
 // Test route to call process-message API with webhook support
 app.post('/api/netomi/process-message', async (req, res) => {
-  console.log(`[Process Message]`);
+  debug.log(`[Process Message]`);
   try {
     const { messageData, clientSocketId } = req.body || {};
 
     if (!messageData) {
-      console.error('[Process Message] ERROR: Missing messageData in request body');
+      debug.error('[Process Message] ERROR: Missing messageData in request body');
       return res.status(400).json({ error: 'Missing `messageData` in request body.' });
     }
 
     // Always use the server-managed token
     const authTokenToUse = await getValidServerTokenInternal();
-    console.log('[Process Message] Using server-managed token for all requests');
+    debug.log('[Process Message] Using server-managed token for all requests');
 
     // Map conversationId -> socketId for targeted webhook routing (only if we have a valid socket)
     try {
       const convId = messageData && messageData.conversationId;
       if (convId && typeof convId === 'string' && clientSocketId) {
+        // Validate conversationId format for security
+        if (!isValidConversationId(convId)) {
+          debug.warn(`[Routing] Invalid conversationId format rejected: ${sanitizeForLog(convId)}`);
+          return res.status(400).json({ 
+            ok: false, 
+            error: 'Invalid conversation ID format. Use only alphanumeric, dash, underscore, and dot characters.' 
+          });
+        }
+        
         conversationToSocket.set(convId, clientSocketId);
         const client = connectedClients.get(clientSocketId);
         if (client) {
           if (!client.conversationIds) client.conversationIds = new Set();
           client.conversationIds.add(convId);
-          console.log(`[Routing] conversationId ${convId} mapped to socket ${clientSocketId}`);
+          debug.log(`[Routing] conversationId ${sanitizeForLog(convId)} mapped to socket ${sanitizeForLog(clientSocketId)}`);
         }
       }
     } catch (_) {}
 
     // Always return immediately on acknowledgment; do not wait for webhook here
     const data = await processMessage(messageData, authTokenToUse, /* waitForWebhook */ false, /* timeoutMs */ 0);
-    console.log('[Netomi process message] Ack only (webhook will arrive via Socket.IO)');
+    debug.log('[Netomi process message] Ack only (webhook will arrive via Socket.IO)');
     return res.status(200).json({ ok: true, data: data ?? {} });
   } catch (err) {
-    console.error('Process message failed:', err);
+    debug.error('Process message failed:', err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
 
 
-app.get('/', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
+// Serve React app
+app.get('/', (_req, res) => res.sendFile('index.html', { root: 'build' }));
 
-app.get('/rexy', (_req, res) => res.sendFile('rexy.html', { root: 'public' }));
+// Rexy route now points to React version
+app.get('/rexy', (_req, res) => res.sendFile('index.html', { root: 'build' }));
 
 app.get('/netomi', (_req, res) => res.sendFile('netomi.html', { root: 'public/test' }));
 
@@ -893,7 +937,7 @@ app.get('/gtm-test', (_req, res) => res.sendFile('gtm-test.html', { root: 'publi
 
 // Test endpoint to trigger connection error overlay
 app.get('/test-disconnect', (_req, res) => {
-  res.redirect('/rexy?test_disconnect=true');
+  res.redirect('/?test_disconnect=true');
 });
 
 // Test endpoint to verify webhook endpoint is accessible
@@ -945,7 +989,7 @@ app.get('/api/webhook-messages', (req, res) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log(`[Socket.IO] Client connected: ${socket.id}`);
+  debug.log(`[Socket.IO] Client connected: ${socket.id}`);
   
   // Store unauthenticated client initially
   connectedClients.set(socket.id, {
@@ -965,7 +1009,7 @@ io.on('connection', (socket) => {
   // Handle client info (no auth token needed from client)
   socket.on('authenticate', (data) => {
     const { clientInfo } = data;
-    console.log(`[Socket.IO] Client ${socket.id} sending client info`);
+    debug.log(`[Socket.IO] Client ${socket.id} sending client info`);
     
     // Update client with info (no auth token from client)
     connectedClients.set(socket.id, {
@@ -985,14 +1029,14 @@ io.on('connection', (socket) => {
   
   // Handle client disconnect
   socket.on('disconnect', (reason) => {
-    console.log(`[Socket.IO] Client disconnected: ${socket.id}, reason: ${reason}`);
+    debug.log(`[Socket.IO] Client disconnected: ${sanitizeForLog(socket.id)}, reason: ${sanitizeForLog(reason)}`);
     const client = connectedClients.get(socket.id);
     if (client && client.conversationIds) {
       client.conversationIds.forEach((convId) => {
         const mapped = conversationToSocket.get(convId);
         if (mapped === socket.id) {
           conversationToSocket.delete(convId);
-          console.log(`[Routing] Unmapped conversation ${convId} from socket ${socket.id}`);
+          debug.log(`[Routing] Unmapped conversation ${sanitizeForLog(convId)} from socket ${sanitizeForLog(socket.id)}`);
         }
       });
     }
@@ -1019,7 +1063,7 @@ function broadcastWebhookUpdate(webhookMessage) {
   const convId = webhookMessage && webhookMessage.data && webhookMessage.data.requestPayload && webhookMessage.data.requestPayload.conversationId;
   
   if (!convId) {
-    console.warn(`[Socket.IO] No conversationId found in webhook payload (deliveryId=${deliveryId})`);
+    debug.warn(`[Socket.IO] No conversationId found in webhook payload (deliveryId=${deliveryId})`);
     return;
   }
 
@@ -1027,19 +1071,19 @@ function broadcastWebhookUpdate(webhookMessage) {
   const targetSocketId = conversationToSocket.get(convId);
   
   if (!targetSocketId) {
-    console.warn(`[Socket.IO] No socket found for conversation ${convId} (deliveryId=${deliveryId})`);
+    debug.warn(`[Socket.IO] No socket found for conversation ${sanitizeForLog(convId)} (deliveryId=${deliveryId})`);
     return;
   }
 
   if (!connectedClients.has(targetSocketId)) {
-    console.warn(`[Socket.IO] Socket ${targetSocketId} no longer connected for conversation ${convId} (deliveryId=${deliveryId})`);
+    debug.warn(`[Socket.IO] Socket ${sanitizeForLog(targetSocketId)} no longer connected for conversation ${sanitizeForLog(convId)} (deliveryId=${deliveryId})`);
     // Clean up stale mapping
     conversationToSocket.delete(convId);
     return;
   }
 
   // Send only to the targeted socket
-  console.log(`[Socket.IO] Targeted send for conversation ${convId} to socket ${targetSocketId} (deliveryId=${deliveryId})`);
+  debug.log(`[Socket.IO] Targeted send for conversation ${sanitizeForLog(convId)} to socket ${sanitizeForLog(targetSocketId)} (deliveryId=${deliveryId})`);
   const client = connectedClients.get(targetSocketId);
   sendWithRetry(client, targetSocketId, 1);
 
@@ -1049,32 +1093,32 @@ function broadcastWebhookUpdate(webhookMessage) {
         .timeout(10000)
         .emit('webhook_update', eventData, (err, ack) => {
           if (err) {
-            console.warn(`[Socket.IO] Ack timeout for client ${clientId} on attempt ${attempt} (deliveryId=${deliveryId})`);
+            debug.warn(`[Socket.IO] Ack timeout for client ${sanitizeForLog(clientId)} on attempt ${attempt} (deliveryId=${deliveryId})`);
             if (attempt < 2) {
               // Check connection and retry once
               if (client.socket.connected) {
-                console.log(`[Socket.IO] Retrying send to ${clientId} (deliveryId=${deliveryId})`);
+                debug.log(`[Socket.IO] Retrying send to ${sanitizeForLog(clientId)} (deliveryId=${deliveryId})`);
                 sendWithRetry(client, clientId, attempt + 1);
               } else {
-                console.warn(`[Socket.IO] Client ${clientId} not connected; skipping retry`);
+                debug.warn(`[Socket.IO] Client ${sanitizeForLog(clientId)} not connected; skipping retry`);
                 // Clean up mapping if client disconnected
                 if (conversationToSocket.get(convId) === clientId) {
                   conversationToSocket.delete(convId);
-                  console.log(`[Routing] Cleaned up mapping for conversation ${convId} from disconnected socket ${clientId}`);
+                  debug.log(`[Routing] Cleaned up mapping for conversation ${sanitizeForLog(convId)} from disconnected socket ${sanitizeForLog(clientId)}`);
                 }
               }
             }
             return;
           }
-          console.log(`[Socket.IO] Ack received from client ${clientId} (deliveryId=${deliveryId})`, ack);
+          debug.log(`[Socket.IO] Ack received from client ${sanitizeForLog(clientId)} (deliveryId=${deliveryId})`);
         });
     } catch (error) {
-      console.error(`[Socket.IO] Failed to send to client ${clientId}:`, error);
+      debug.error(`[Socket.IO] Failed to send to client ${sanitizeForLog(clientId)}:`, error);
       connectedClients.delete(clientId);
       // Clean up conversation mapping if this was the mapped socket
       if (conversationToSocket.get(convId) === clientId) {
         conversationToSocket.delete(convId);
-        console.log(`[Routing] Cleaned up mapping for conversation ${convId} from failed socket ${clientId}`);
+        debug.log(`[Routing] Cleaned up mapping for conversation ${sanitizeForLog(convId)} from failed socket ${sanitizeForLog(clientId)}`);
       }
     }
   }
@@ -1084,24 +1128,24 @@ function broadcastWebhookUpdate(webhookMessage) {
 async function startServer() {
   try {
     // Initialize token system (loads from file or generates new)
-    console.log('[Server Startup] Initializing token system...');
+    debug.log('[Server Startup] Initializing token system...');
     await initializeTokenSystem();
     
     // Start the HTTP server
     httpServer.listen(CONFIG.PORT, () => {
-      console.log(`🌐 Netomi HTTP Server listening on http://localhost:${CONFIG.PORT}`);
-      console.log(`🔌 Socket.IO enabled for real-time communication`);
-      console.log(`🔗 Webhook endpoint: http://localhost:${CONFIG.PORT}/webhook/netomi`);
-      console.log(`🧪 Test webhook: http://localhost:${CONFIG.PORT}/webhook/test`);
-      console.log(`📋 Webhook info: http://localhost:${CONFIG.PORT}/webhook/info`);
-      console.log(`🔐 Bearer Token: ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
-      console.log(`🔄 Server token auto-refresh: Every 23 hours`);
-      console.log(`\n📝 For Netomi Team:`);
-      console.log(`   URL: http://localhost:${CONFIG.PORT}/webhook/netomi`);
-      console.log(`   Authorization: Bearer ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
+      debug.log(`🌐 Netomi HTTP Server listening on http://localhost:${CONFIG.PORT}`);
+      debug.log(`🔌 Socket.IO enabled for real-time communication`);
+      debug.log(`🔗 Webhook endpoint: http://localhost:${CONFIG.PORT}/webhook/netomi`);
+      debug.log(`🧪 Test webhook: http://localhost:${CONFIG.PORT}/webhook/test`);
+      debug.log(`📋 Webhook info: http://localhost:${CONFIG.PORT}/webhook/info`);
+      debug.log(`🔐 Bearer Token: ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
+      debug.log(`🔄 Server token auto-refresh: Every 23 hours`);
+      debug.log(`\n📝 For Netomi Team:`);
+      debug.log(`   URL: http://localhost:${CONFIG.PORT}/webhook/netomi`);
+      debug.log(`   Authorization: Bearer ${CONFIG.WEBHOOK_BEARER_TOKEN}`);
     });
   } catch (error) {
-    console.error('[Server Startup] Failed to start server:', error);
+    debug.error('[Server Startup] Failed to start server:', error);
     process.exit(1);
   }
 }
