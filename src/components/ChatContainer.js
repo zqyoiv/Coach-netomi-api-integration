@@ -104,45 +104,7 @@ const ChatContainer = () => {
     setShowConnectionError(connectionError);
   }, [connectionError]);
 
-  // Register webhook handler for real-time updates (matching rexy.js)
-  useEffect(() => {
-    const handleWebhookUpdate = (webhookResponse) => {
-      debug.log('[ChatContainer] Processing real-time webhook update:', webhookResponse);
-      
-      // Stop thinking animation when response arrives (matching vanilla JS)
-      stopThinkingAnimation();
-      
-      // Extract all AI response texts
-      const allTexts = extractAllAIResponseTexts(webhookResponse);
-      if (allTexts.length > 0) {
-        debug.log(`[ChatContainer] Adding ${allTexts.length} AI responses from real-time update`);
-        renderMultipleMessages(allTexts, 1200); // 1.2 second delay between messages
-      }
-      
-      // Extract and display image if available
-      const imageData = extractImageData(webhookResponse);
-      if (imageData) {
-        debug.log('[ChatContainer] Adding image from real-time update:', imageData.imageUrl);
-        addStickerStyleImage(imageData.imageUrl);
-      }
-      
-      // Extract and display carousel if available
-      const carouselData = extractCarouselData(webhookResponse);
-      if (carouselData) {
-        addCarouselMessage(carouselData);
-      }
-    };
-
-    // Register the webhook handler
-    registerWebhookHandler(handleWebhookUpdate);
-
-    // Cleanup on unmount
-    return () => {
-      unregisterWebhookHandler();
-    };
-  }, [stopThinkingAnimation, extractAllAIResponseTexts, extractImageData, extractCarouselData, registerWebhookHandler, unregisterWebhookHandler]);
-
-
+  // Define helper functions BEFORE the useEffect that uses them
   const addMessage = (text, isUser = true, options = {}) => {
     const message = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -177,21 +139,55 @@ const ChatContainer = () => {
     }, 100);
   };
 
+  // Add typing indicator (matching vanilla JS rexy.js lines 488-512)
+  const addTypingIndicator = () => {
+    // Remove existing typing indicator if any
+    removeTypingIndicator();
+    
+    const typingMessage = {
+      id: 'typingIndicator',
+      type: 'bot',
+      content: '',
+      isTyping: true,
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, typingMessage]);
+    
+    // Start thinking animation logic
+    startThinkingAnimation();
+    
+    // Scroll to bottom
+    setTimeout(() => {
+      if (chatMessagesRef.current) {
+        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+      }
+    }, 100);
+  };
+
+  // Remove typing indicator (matching vanilla JS rexy.js lines 515-523)
+  const removeTypingIndicator = () => {
+    setMessages(prev => prev.filter(msg => msg.id !== 'typingIndicator'));
+    
+    // Stop thinking animation
+    stopThinkingAnimation();
+  };
+
   const handleSendMessage = async (messageText, attachments = []) => {
     if (!messageText.trim() && attachments.length === 0) return;
 
     // Add user message
     addMessage(messageText, true);
 
-    // Start thinking animation (matching vanilla JS - shows fullscreen overlay after delay)
-    startThinkingAnimation();
+    // Show typing indicator (matching vanilla JS rexy.js line 407)
+    addTypingIndicator();
 
     try {
       // Send to Netomi
       const response = await netomiIntegration.sendMessage(messageText, attachments);
       
-      // DON'T stop animation here - initial response is just acknowledgment
-      // Animation will stop when webhook arrives with actual data
+      // DON'T remove typing indicator here - initial response is just acknowledgment
+      // Typing indicator will be removed when webhook arrives with actual data
 
       // Add bot response if there's immediate text (though usually there isn't)
       if (response && response.text) {
@@ -209,8 +205,8 @@ const ChatContainer = () => {
         });
       }
       
-      // Stop thinking animation on error
-      stopThinkingAnimation();
+      // Remove typing indicator on error (matching vanilla JS rexy.js line 482)
+      removeTypingIndicator();
       
       // Show error message
       addMessage('Sorry, I encountered an error. Please try again.', false);
@@ -256,6 +252,45 @@ const ChatContainer = () => {
     };
     setMessages(prev => [...prev, carouselMessage]);
   };
+
+  // Register webhook handler for real-time updates (matching rexy.js)
+  // NOW defined after all helper functions
+  useEffect(() => {
+    const handleWebhookUpdate = (webhookResponse) => {
+      debug.log('[ChatContainer] Processing real-time webhook update:', webhookResponse);
+      
+      // Remove typing indicator when response arrives (matching vanilla JS rexy.js line 1224)
+      removeTypingIndicator();
+      
+      // Extract all AI response texts
+      const allTexts = extractAllAIResponseTexts(webhookResponse);
+      if (allTexts.length > 0) {
+        debug.log(`[ChatContainer] Adding ${allTexts.length} AI responses from real-time update`);
+        renderMultipleMessages(allTexts, 1200); // 1.2 second delay between messages
+      }
+      
+      // Extract and display image if available
+      const imageData = extractImageData(webhookResponse);
+      if (imageData) {
+        debug.log('[ChatContainer] Adding image from real-time update:', imageData.imageUrl);
+        addStickerStyleImage(imageData.imageUrl);
+      }
+      
+      // Extract and display carousel if available
+      const carouselData = extractCarouselData(webhookResponse);
+      if (carouselData) {
+        addCarouselMessage(carouselData);
+      }
+    };
+
+    // Register the webhook handler
+    registerWebhookHandler(handleWebhookUpdate);
+
+    // Cleanup on unmount
+    return () => {
+      unregisterWebhookHandler();
+    };
+  }, [removeTypingIndicator, renderMultipleMessages, addStickerStyleImage, addCarouselMessage, extractAllAIResponseTexts, extractImageData, extractCarouselData, registerWebhookHandler, unregisterWebhookHandler]);
 
   // Handle image click to open photo overlay (matching rexy.js functionality)
   const handleImageClick = (imageSrc, title = 'Image') => {

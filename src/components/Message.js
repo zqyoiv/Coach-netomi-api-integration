@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Message = ({ message, renderWelcomeAnimation, onImageClick, onVideoClick }) => {
-  const { type, content, isWelcome, isHtml, isSticker, imageSrc, isCarousel, carouselData } = message;
+  const { type, content, isWelcome, isTyping, isHtml, isSticker, imageSrc, isCarousel, carouselData } = message;
 
   if (isWelcome) {
     return (
@@ -13,6 +13,24 @@ const Message = ({ message, renderWelcomeAnimation, onImageClick, onVideoClick }
     );
   }
 
+  // Typing indicator (matching vanilla JS rexy.js lines 492-505)
+  if (isTyping) {
+    return (
+      <div className="message bot-message typing-message" id="typingIndicator">
+        <div className="message-content">
+          <div className="message-bubble bot-bubble typing-bubble">
+            <span className="typing-dots">
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Sticker (matching vanilla JS rexy.js lines 1132-1158)
   if (isSticker) {
     return (
       <div className="message bot-message">
@@ -21,15 +39,8 @@ const Message = ({ message, renderWelcomeAnimation, onImageClick, onVideoClick }
             src={imageSrc} 
             alt="Response image" 
             className="sticker"
-            style={{ cursor: 'pointer' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onImageClick) {
-                onImageClick(imageSrc);
-              }
-            }}
             onError={(e) => {
-              // If image doesn't load, show error message instead
+              // If image doesn't load, show error message instead (matching vanilla JS lines 1143-1150)
               e.target.style.display = 'none';
               const errorDiv = document.createElement('div');
               errorDiv.className = 'message-bubble bot-bubble';
